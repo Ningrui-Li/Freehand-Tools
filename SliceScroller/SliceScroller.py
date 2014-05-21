@@ -19,16 +19,6 @@ class SliceScroller:
     # Add this test to the SelfTest module's list for discovery when the module
     # is created.  Since this module may be discovered before SelfTests itself,
     # create the list if it doesn't already exist.
-    """try:
-      slicer.selfTests
-    except AttributeError:
-      slicer.selfTests = {}
-    slicer.selfTests['SliceScroller'] = self.runTest
-
-  def runTest(self):
-    tester = SliceScrollerTest()
-    tester.runTest()
-"""
 
 class SliceScrollerWidget:
   def __init__(self, parent = None):
@@ -42,7 +32,8 @@ class SliceScrollerWidget:
     if not parent:
       self.setup()
       self.parent.show()
-
+    self.scene = slicer.mrmlScene
+    self.scene.SaveStateForUndo()
   def setup(self):
     reloadCollapsibleButton = ctk.ctkCollapsibleButton()
     reloadCollapsibleButton.text = "Reload && Test"
@@ -118,7 +109,7 @@ class SliceScrollerWidget:
     ModuleWizard will subsitute correct default moduleName.
     """
     import imp, sys, os, slicer
-
+    self.scene.Undo()
     widgetName = moduleName + "Widget"
 
     # reload the source code
@@ -157,7 +148,7 @@ class SliceScrollerWidget:
         'globals()["%s"].%s(parent)' % (moduleName, widgetName))
     globals()[widgetName.lower()].setup()
     setattr(globals()['slicer'].modules, widgetName, globals()[widgetName.lower()])
-
+    
   def onReloadAndTest(self,moduleName="SliceScroller"):
     try:
       self.onReload()
@@ -252,8 +243,7 @@ class SliceScrollerLogic:
   def hasImageData(self,volumeNode):
     """This is a dummy logic method that 
     returns true if the passed in volume
-    node has valid image data
-    """
+    node has valid image data"""
     if not volumeNode:
       print('no volume node')
       return False
@@ -314,9 +304,7 @@ class SliceScrollerLogic:
     annotationLogic.CreateSnapShot(name, description, type, self.screenshotScaleFactor, imageData)
 
   def run(self,inputVolume,outputVolume,enableScreenshots=0,screenshotScaleFactor=1):
-    """
-    Run the actual algorithm
-    """
+    """Run the actual algorithm"""
 
     self.delayDisplay('Running the aglorithm')
 
@@ -327,106 +315,3 @@ class SliceScrollerLogic:
 
     return True
 
-
-class SliceScrollerTest(unittest.TestCase):
-  """
-  This is the test case for your scripted module.
-  """
-
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
-
-  def setUp(self):
-    """ Do whatever is needed to reset the state - typically a scene clear will be enough.
-    """
-    slicer.mrmlScene.Clear(0)
-    
-
-  def runTest(self):
-    pass
-    """Run as few or as many tests as needed here.
-    """
-    """self.setUp()
-    self.test_VolumeScroller1()
-
-    volumeNode = slicer.util.getNode(pattern="FA")
-    logic = VolumeScrollerLogic()
-    volumesLogic = slicer.modules.volumes.logic()
-    
-    blurLevelCount = 10
-    for sigma in range(blurLevelCount):
-      self.delayDisplay('Making blurred volume from sigma of %d\n' % sigma)
-      outputVolume = volumesLogic.CloneVolume(slicer.mrmlScene, volumeNode, 'blur-%d' % sigma)
-      parameters = {
-        "inputVolume": slicer.util.getNode('FA'),
-        "outputVolume": outputVolume,
-        "sigma": sigma,
-        }
-      blur = slicer.modules.gaussianblurimagefilter
-      slicer.cli.run(blur, None, parameters, wait_for_completion=True)
-      
-    slicer.modules.VolumeScrollerWidget.onRefresh()
-    self.delayDisplay('Selecting original volume')
-    slicer.modules.VolumeScrollerWidget.slider.value = 0
-    self.delayDisplay('Selecting final volume')
-    slicer.modules.VolumeScrollerWidget.slider.value = blurLevelCount
-    
-    selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-    selectedID = selectionNode.GetActiveVolumeID()
-    lastVolumeID = outputVolume.GetID()
-    if selectedID != lastVolumeID:
-      raise Exception("Volume ID was not selected!\nExpected %s but got %s" % (lastVolumeID, selectedID))
-
-    self.delayDisplay('Test passed!')
-
-  def test_VolumeScroller1(self):
-    """ """Ideally you should have several levels of tests.  At the lowest level
-    tests sould exercise the functionality of the logic with different inputs
-    (both valid and invalid).  At higher levels your tests should emulate the
-    way the user would interact with your code and confirm that it still works
-    the way you intended.
-    One of the most important features of the tests is that it should alert other
-    developers when their changes will have an impact on the behavior of your
-    module.  For example, if a developer removes a feature that you depend on,
-    your test should break so they know that the feature is needed.
-    """"""
-
-    self.delayDisplay("Starting the test")
-    #
-    # first, get some data
-    #
-    #import urllib
-    #downloads = (
-    #    ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-    #    )
-
-    #for url,name,loader in downloads:
-    #  filePath = slicer.app.temporaryPath + '/' + name
-    #  if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-    #    print('Requesting download %s from %s...\n' % (name, url))
-    #    urllib.urlretrieve(url, filePath)
-    #  if loader:
-    #    print('Loading %s...\n' % (name,))
-    #    loader(filePath)
-    #self.delayDisplay('Finished with download and loading\n')
-  
-    slicer.util.loadVolume('/home/nl91/Downloads/FA.nrrd')    
-    volumeNode = slicer.util.getNode(pattern="FA")
-    logic = VolumeScrollerLogic()
-    self.assertTrue( logic.hasImageData(volumeNode) )
-    self.delayDisplay('Test passed!')
-"""
