@@ -5,7 +5,7 @@ from __main__ import vtk, qt, ctk, slicer
 class SliceScroller:
   def __init__(self, parent):
     parent.title = "Freehand Slice Scroller" 
-    parent.categories = ["Examples"]
+    parent.categories = ["Freehand"]
     parent.dependencies = []
     parent.contributors = ["Ningrui Li"] 
     parent.helpText = """
@@ -172,73 +172,99 @@ class SliceScrollerLogic:
     self.scene = slicer.mrmlScene
     self.scene.SetUndoOn()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
-
-    planex = vtk.vtkPlane()
-    #
+    
     # HARD-CODED TEST VALUES
-    #
-    self.normalList = [[1, 2, 3], [2, 3, 4], [4, 5, 6], [1, 1, 0], [1, 2, 5]]
-    self.originList = [[-120, 0, 0], [-60, 0, 0], [0, 0, 0], [60, 0, 0], [120, 0, 0]]
-    planex.SetOrigin(self.originList[0])#the pPlane[0] is a point in the plane A
-    planex.SetNormal(self.normalList[0])#the anVector is the normal of the plane A
-        
-    planexSample = vtk.vtkSampleFunction()
-    planexSample.SetImplicitFunction(planex)
-    planexSample.SetModelBounds(-100,100,-100,100,-100,100)
-    planexSample.SetSampleDimensions(100,100,100)
-    planexSample.ComputeNormalsOff()
-    plane1 = vtk.vtkContourFilter()
-    plane1.SetInput(planexSample.GetOutput())
+    imgFilePrefix = './data/test'
+    imgFileSuffix = '.tiff'
+    self.imageList = range(1, 6)
+    self.rotateXList = [30, 60, 90, 120, 150]
+    self.rotateYList = [15, 30, 45, 60, 75]
+    self.rotateZList = [10, 20, 30, 40, 50]
 
-    # Create model Plane A node
-    planeA = slicer.vtkMRMLModelNode()
-    planeA.SetScene(self.scene)
-    planeA.SetName("PlaneA")
-    planeA.SetAndObservePolyData(plane1.GetOutput())
+    # yay, adding images to slicer
+    planeSource = vtk.vtkPlaneSource()
 
-    # Create display model Plane A node
-    planeAModelDisplay = slicer.vtkMRMLModelDisplayNode()
-    planeAModelDisplay.BackfaceCullingOff()
-    planeAModelDisplay.SetColor(1,0,1)
-    planeAModelDisplay.SetScene(self.scene)
-    planeA.SetAndObserveDisplayNodeID(planeAModelDisplay.GetID())
-    #Add to scene
-    planeAModelDisplay.SetInputPolyData(plane1.GetOutput()) 
-    self.scene.AddNode(planeA)
+    reader = vtk.vtkTIFFReader()
+    reader.SetFileName(imgFilePrefix + str(self.imageList[0]) + imgFileSuffix)
+    #reader.CanReadFile('imgFilePrefix + str(self.imageList[0]) + imgFileSuffix')
 
+    # model node
+    model = slicer.vtkMRMLModelNode()
+    model.SetScene(self.scene)
+    model.SetName("test " + str(self.imageList[0]) + "cow")
+    model.SetAndObservePolyData(planeSource.GetOutput())
+
+    # model display node
+    modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(modelDisplay)
+
+    # connecting model node w/ its model display node
+    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
+
+    # adding tiff file as texture to modelDisplay
+    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(model)
+
+    # now doing a linear transform to set coordinates and orientation of plane
+    transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(transform)
+    model.SetAndObserveTransformNodeID(transform.GetID())
+    vTransform = vtk.vtkTransform()
+    vTransform.Scale(300, 300, 300)
+    vTransform.RotateX(self.rotateXList[0])
+    vTransform.RotateY(self.rotateYList[0])
+    vTransform.RotateZ(self.rotateZList[0])
+
+    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+  
   def selectSlice(self, index):
     self.scene.Undo()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
+    imgFilePrefix = './data/test'
+    imgFileSuffix = '.tiff'
+    # yay, adding images to slicer
+    planeSource = vtk.vtkPlaneSource()
 
-    planex = vtk.vtkPlane()
-    planex.SetOrigin(self.originList[index])#the pPlane[0] is a point in the plane A
-    planex.SetNormal(self.normalList[index])#the anVector is the normal of the plane A
-        
-    planexSample = vtk.vtkSampleFunction()
-    planexSample.SetImplicitFunction(planex)
-    planexSample.SetModelBounds(-100,100,-100,100,-100,100)
-    planexSample.SetSampleDimensions(100,100,100)
-    planexSample.ComputeNormalsOff()
-    plane1 = vtk.vtkContourFilter()
-    plane1.SetInput(planexSample.GetOutput())
-        
-    # Create model Plane A node
-    planeA = slicer.vtkMRMLModelNode()
-    planeA.SetScene(self.scene)
-    planeA.SetName("PlaneA")
-    planeA.SetAndObservePolyData(plane1.GetOutput())
+    # Possible useful future command for plane offset from origin
 
-    # Create display model Plane A node
-    planeAModelDisplay = slicer.vtkMRMLModelDisplayNode()
-    planeAModelDisplay.BackfaceCullingOff()
-    planeAModelDisplay.SetColor(1,0,1)
-    planeAModelDisplay.SetScene(self.scene)
-    self.scene.AddNode(planeAModelDisplay)
-    planeA.SetAndObserveDisplayNodeID(planeAModelDisplay.GetID())
+    #planeSource.SetCenter(.5, 0, 0)
 
-    #Add to scene
-    planeAModelDisplay.SetInputPolyData(plane1.GetOutput()) 
-    self.scene.AddNode(planeA)
+    reader = vtk.vtkTIFFReader()
+    reader.SetFileName(imgFilePrefix + str(self.imageList[index]) + imgFileSuffix)
+    #reader.CanReadFile('imgFilePrefix + str(self.imageList[0]) + imgFileSuffix')
+
+    # model node
+    model = slicer.vtkMRMLModelNode()
+    model.SetScene(self.scene)
+    model.SetName("test " + str(self.imageList[index]) + "cow")
+    model.SetAndObservePolyData(planeSource.GetOutput())
+
+    # model display node
+    modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(modelDisplay)
+
+    # connecting model node w/ its model display node
+    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
+
+    # adding tiff file as texture to modelDisplay
+    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(model)
+
+    # now doing a linear transform to set coordinates and orientation of plane
+    transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(transform)
+    model.SetAndObserveTransformNodeID(transform.GetID())
+    vTransform = vtk.vtkTransform()
+    vTransform.Scale(300, 300, 300)
+    vTransform.RotateX(self.rotateXList[index])
+    vTransform.RotateY(self.rotateYList[index])
+    vTransform.RotateZ(self.rotateZList[index])
+
+    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
 
   def hasImageData(self,volumeNode):
     """This is a dummy logic method that 
