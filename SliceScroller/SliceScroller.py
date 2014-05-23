@@ -140,6 +140,12 @@ class SliceScrollerWidget:
 
     # make connections
     self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
+    self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
+    self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
+    self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
+    self.xAngleSlider.connect('valueChanged(double)', self.onXAngleValueChanged)    
+    self.yAngleSlider.connect('valueChanged(double)', self.onYAngleValueChanged)    
+    self.zAngleSlider.connect('valueChanged(double)', self.onZAngleValueChanged)    
     self.refreshButton.connect('clicked()', self.onRefresh)
     
     self.logic = SliceScrollerLogic()
@@ -151,6 +157,24 @@ class SliceScrollerWidget:
 
   def onSliderValueChanged(self, value):
     self.logic.selectSlice(int(value))
+
+  def onXPositionValueChanged(self, value):
+    self.logic.setXPosition(value)
+
+  def onYPositionValueChanged(self, value):
+    self.logic.setYPosition(value)
+
+  def onZPositionValueChanged(self, value):
+    self.logic.setZPosition(value)
+
+  def onXAngleValueChanged(self, value):
+    self.logic.setXAngle(value)
+
+  def onYAngleValueChanged(self, value):
+    self.logic.setYAngle(value)
+
+  def onZAngleValueChanged(self, value):
+    self.logic.setZAngle(value)
 
   def onRefresh(self):
     self.slider.maximum = 4 
@@ -237,28 +261,18 @@ class SliceScrollerLogic:
     self.scene.SetUndoOn()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
     
-    # HARD-CODED TEST VALUES
-    imgFilePrefix = './data/test'
-    imgFileSuffix = '.tiff'
-    self.imageList = range(1, 6)
-    self.rotateXList = [30, 60, 90, 120, 150]
-    self.rotateYList = [15, 30, 45, 60, 75]
-    self.rotateZList = [10, 20, 30, 40, 50]
+    self.currentSlice = Slice('test.png')
 
     # yay, adding images to slicer
     planeSource = vtk.vtkPlaneSource()
-
-    #reader = vtk.vtkTIFFReader()
-    #reader.SetFileName(imgFilePrefix + str(self.imageList[0]) + imgFileSuffix)
-    #reader.CanReadFile('imgFilePrefix + str(self.imageList[0]) + imgFileSuffix')
-
+    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     reader = vtk.vtkPNGReader()
-    reader.SetFileName('test.png')
+    reader.SetFileName(self.currentSlice.name)
 
     # model node
     model = slicer.vtkMRMLModelNode()
     model.SetScene(self.scene)
-    model.SetName("test " + str(self.imageList[0]) + "cow")
+    model.SetName(self.currentSlice.name)
     model.SetAndObservePolyData(planeSource.GetOutput())
 
     # model display node
@@ -280,12 +294,75 @@ class SliceScrollerLogic:
     model.SetAndObserveTransformNodeID(transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(300, 300, 300)
-    vTransform.RotateX(self.rotateXList[0])
-    vTransform.RotateY(self.rotateYList[0])
-    vTransform.RotateZ(self.rotateZList[0])
+    vTransform.RotateX(0)
+    vTransform.RotateY(0)
+    vTransform.RotateZ(0)
 
     transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
+  def setXPosition(self, xpos):
+    self.currentSlice.x = xpos
+    self.updateScene()
+
+  def setYPosition(self, ypos):
+    self.currentSlice.y = ypos
+    self.updateScene()
+  
+  def setZPosition(self, zpos):
+    self.currentSlice.z = zpos
+    self.updateScene()
+
+  def setXAngle(self, xpos):
+    self.currentSlice.xAngle = xpos
+    self.updateScene()
+
+  def setYAngle(self, ypos):
+    self.currentSlice.yAngle = ypos
+    self.updateScene()
+  
+  def setZAngle(self, zpos):
+    self.currentSlice.zAngle = zpos
+    self.updateScene()
+
+  def updateScene(self):
+    self.scene.Undo()
+    self.scene.SaveStateForUndo(self.scene.GetNodes())
+
+    planeSource = vtk.vtkPlaneSource()
+    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    reader = vtk.vtkPNGReader()
+    reader.SetFileName(self.currentSlice.name)
+
+    # model node
+    model = slicer.vtkMRMLModelNode()
+    model.SetScene(self.scene)
+    model.SetName(self.currentSlice.name)
+    model.SetAndObservePolyData(planeSource.GetOutput())
+
+    # model display node
+    modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(modelDisplay)
+
+    # connecting model node w/ its model display node
+    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
+
+    # adding tiff file as texture to modelDisplay
+    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(model)
+
+    # now doing a linear transform to set coordinates and orientation of plane
+    transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(transform)
+    model.SetAndObserveTransformNodeID(transform.GetID())
+    vTransform = vtk.vtkTransform()
+    vTransform.Scale(300, 300, 300)
+    vTransform.RotateX(self.currentSlice.xAngle)
+    vTransform.RotateY(self.currentSlice.yAngle)
+    vTransform.RotateZ(self.currentSlice.zAngle)
+    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+    
   def selectSlice(self, index):
     self.scene.Undo()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
@@ -293,10 +370,6 @@ class SliceScrollerLogic:
     imgFileSuffix = '.tiff'
     # yay, adding images to slicer
     planeSource = vtk.vtkPlaneSource()
-
-    # Possible useful future command for plane offset from origin
-
-    #planeSource.SetCenter(.5, 0, 0)
 
     reader = vtk.vtkTIFFReader()
     reader.SetFileName(imgFilePrefix + str(self.imageList[index]) + imgFileSuffix)
@@ -407,4 +480,43 @@ class SliceScrollerLogic:
     self.takeScreenshot('VolumeScroller-Start','Start',-1)
 
     return True
+
+class Slice:
+  def __init__(self):
+    self.x = 0
+    self.y = 0
+    self.z = 0
+    self.xAngle = 0
+    self.yAngle = 0
+    self.zAngle = 0
+    self.name = "default"
+  
+  def __init__(self, name):
+    self.x = 0
+    self.y = 0
+    self.z = 0
+    self.xAngle = 0
+    self.yAngle = 0
+    self.zAngle = 0
+    self.name = name
+  
+  def setPosition(self, x, y, z):
+    self.x = x
+    self.y = y
+    self.z = z
+  
+  def setPosition(self, xyz):
+    self.x = xyz[0]
+    self.y = xyz[1]
+    self.z = xyz[2]
+
+  def setAngles(self, xAng, yAng, zAng):
+    self.xAngle = xAng
+    self.yAngle = yAng
+    self.zAngle = zAng
+
+  def setAngles(self, xyzAng):
+    self.xAngle = xyzAng[0]
+    self.yAngle = xyzAng[1]
+    self.zAngle = xyzAng[2]
 
