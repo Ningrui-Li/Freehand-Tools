@@ -70,9 +70,73 @@ class SliceScrollerWidget:
     self.slider.enabled = True
     scrollingFormLayout.addRow("Slices", self.slider)
 
+   # orientation sliders
+    orientationCollapsibleButton = ctk.ctkCollapsibleButton()
+    orientationCollapsibleButton.text = "Orientation"
+    self.layout.addWidget(orientationCollapsibleButton)
+    orientationFormLayout = qt.QFormLayout(orientationCollapsibleButton)
+    
+    # x, y, z center sliders
+    self.xSlider = ctk.ctkSliderWidget()
+    self.xSlider.decimals = 2
+    self.xSlider.enabled = True
+    self.xSlider.maximum = 2
+    self.xSlider.minimum = -2
+    self.xSlider.value = 0
+    self.xSlider.singleStep = 0.01
+    orientationFormLayout.addRow("Center - X Position", self.xSlider)
+
+    self.ySlider = ctk.ctkSliderWidget()
+    self.ySlider.decimals = 2
+    self.ySlider.enabled = True
+    self.ySlider.maximum = 2
+    self.ySlider.minimum = -2
+    self.ySlider.value = 0   
+    self.ySlider.singleStep = 0.01
+    orientationFormLayout.addRow("Center - Y Position", self.ySlider)
+
+    self.zSlider = ctk.ctkSliderWidget()
+    self.zSlider.decimals = 2
+    self.zSlider.enabled = True
+    self.zSlider.maximum = 2
+    self.zSlider.minimum = -2
+    self.zSlider.value = 0
+    self.zSlider.singleStep = 0.01
+    orientationFormLayout.addRow("Center - Z Position", self.zSlider)
+
+    # euler angle orientation sliders
+
+    self.xAngleSlider = ctk.ctkSliderWidget()
+    self.xAngleSlider.decimals = 1
+    self.xAngleSlider.enabled = True
+    self.xAngleSlider.maximum = 180
+    self.xAngleSlider.minimum = -180
+    self.xAngleSlider.value = 0
+    self.xAngleSlider.singleStep = 0.1
+    orientationFormLayout.addRow("X Angle", self.xAngleSlider)
+
+    self.yAngleSlider = ctk.ctkSliderWidget()
+    self.yAngleSlider.decimals = 1
+    self.yAngleSlider.enabled = True
+    self.yAngleSlider.maximum = 180
+    self.yAngleSlider.minimum = -180
+    self.yAngleSlider.value = 0
+    self.yAngleSlider.singleStep = 0.1
+    orientationFormLayout.addRow("Y Angle", self.yAngleSlider)
+
+    self.zAngleSlider = ctk.ctkSliderWidget()
+    self.zAngleSlider.decimals = 1
+    self.zAngleSlider.enabled = True
+    self.zAngleSlider.maximum = 180
+    self.zAngleSlider.minimum = -180
+    self.zAngleSlider.value = 0
+    self.zAngleSlider.singleStep = 0.1
+    orientationFormLayout.addRow("Z Angle", self.zAngleSlider)
+
+
     # refresh button
     self.refreshButton = qt.QPushButton("Refresh")
-    scrollingFormLayout.addRow(self.refreshButton)
+    orientationFormLayout.addRow(self.refreshButton)
 
     # make connections
     self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
@@ -184,9 +248,12 @@ class SliceScrollerLogic:
     # yay, adding images to slicer
     planeSource = vtk.vtkPlaneSource()
 
-    reader = vtk.vtkTIFFReader()
-    reader.SetFileName(imgFilePrefix + str(self.imageList[0]) + imgFileSuffix)
+    #reader = vtk.vtkTIFFReader()
+    #reader.SetFileName(imgFilePrefix + str(self.imageList[0]) + imgFileSuffix)
     #reader.CanReadFile('imgFilePrefix + str(self.imageList[0]) + imgFileSuffix')
+
+    reader = vtk.vtkPNGReader()
+    reader.SetFileName('test.png')
 
     # model node
     model = slicer.vtkMRMLModelNode()
