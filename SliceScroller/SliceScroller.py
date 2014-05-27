@@ -11,9 +11,7 @@ class SliceScroller(object):
     parent.helpText = """
     This is an example of scripted loadable module bundled in an extension.
     """
-    parent.acknowledgementText = """
-    zzzzzzzzzzzzzzzz
-""" # replace with organization, grant and thanks.
+    parent.acknowledgementText = "zzzzzzzzzzzzzzzz" # replace with organization, grant and thanks.
     self.parent = parent
 
     # Add this test to the SelfTest module's list for discovery when the module
@@ -70,12 +68,18 @@ class SliceScrollerWidget(object):
     self.slider.enabled = True
     scrollingFormLayout.addRow("Slices", self.slider)
 
-   # orientation sliders
+    # orientation sliders
     orientationCollapsibleButton = ctk.ctkCollapsibleButton()
     orientationCollapsibleButton.text = "Orientation"
     self.layout.addWidget(orientationCollapsibleButton)
     orientationFormLayout = qt.QFormLayout(orientationCollapsibleButton)
     
+    # size scaling slider
+    scalingCollapsibleButton = ctk.ctkCollapsibleButton()
+    scalingCollapsibleButton.text = "Image Size Scaling"
+    self.layout.addWidget(scalingCollapsibleButton)
+    scalingFormLayout = qt.QFormLayout(scalingCollapsibleButton)
+
     # x, y, z center sliders
     self.xSlider = ctk.ctkSliderWidget()
     self.xSlider.decimals = 2
@@ -133,10 +137,18 @@ class SliceScrollerWidget(object):
     self.zAngleSlider.singleStep = 0.1
     orientationFormLayout.addRow("Z Angle", self.zAngleSlider)
 
+    # image size scaling slider
+    self.scalingSlider = ctk.ctkSliderWidget()
+    self.scalingSlider.decimals = 0
+    self.scalingSlider.enabled = True
+    self.scalingSlider.maximum = 300
+    self.scalingSlider.minimum = 0
+    self.scalingSlider.value = 150
+    scalingFormLayout.addRow("Scaling", self.scalingSlider)
 
     # refresh button
-    self.refreshButton = qt.QPushButton("Refresh")
-    orientationFormLayout.addRow(self.refreshButton)
+    # self.refreshButton = qt.QPushButton("Refresh")
+    # orientationFormLayout.addRow(self.refreshButton)
 
     # make connections
     self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
@@ -146,11 +158,12 @@ class SliceScrollerWidget(object):
     self.xAngleSlider.connect('valueChanged(double)', self.onXAngleValueChanged)    
     self.yAngleSlider.connect('valueChanged(double)', self.onYAngleValueChanged)    
     self.zAngleSlider.connect('valueChanged(double)', self.onZAngleValueChanged)    
-    self.refreshButton.connect('clicked()', self.onRefresh)
+    self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
+    #self.refreshButton.connect('clicked()', self.onRefresh)
     
     self.logic = SliceScrollerLogic()
     # call refresh on the slider to set its initial state
-    self.onRefresh()
+    #self.onRefresh()
 
     # add vertical spacing
     self.layout.addStretch(1)
@@ -175,9 +188,12 @@ class SliceScrollerWidget(object):
 
   def onZAngleValueChanged(self, value):
     self.logic.setZAngle(value)
+  
+  def onScalingValueChanged(self, value):
+    self.logic.setScaling(value)
 
-  def onRefresh(self):
-    self.slider.maximum = 4 
+  # def onRefresh(self):
+  #  self.slider.maximum = 4 
 
   def cleanup(self):
     pass
@@ -293,7 +309,7 @@ class SliceScrollerLogic(object):
     self.scene.AddNode(transform)
     model.SetAndObserveTransformNodeID(transform.GetID())
     vTransform = vtk.vtkTransform()
-    vTransform.Scale(300, 300, 300)
+    vTransform.Scale(150, 150, 150)
     vTransform.RotateX(0)
     vTransform.RotateY(0)
     vTransform.RotateZ(0)
@@ -322,6 +338,10 @@ class SliceScrollerLogic(object):
   
   def setZAngle(self, zpos):
     self.currentSlice.zAngle = zpos
+    self.updateScene()
+
+  def setScaling(self, scaling):
+    self.currentSlice.scaling = scaling
     self.updateScene()
 
   def updateScene(self):
@@ -357,7 +377,7 @@ class SliceScrollerLogic(object):
     self.scene.AddNode(transform)
     model.SetAndObserveTransformNodeID(transform.GetID())
     vTransform = vtk.vtkTransform()
-    vTransform.Scale(300, 300, 300)
+    vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
     vTransform.RotateX(self.currentSlice.xAngle)
     vTransform.RotateY(self.currentSlice.yAngle)
     vTransform.RotateZ(self.currentSlice.zAngle)
@@ -399,7 +419,7 @@ class SliceScrollerLogic(object):
     self.scene.AddNode(transform)
     model.SetAndObserveTransformNodeID(transform.GetID())
     vTransform = vtk.vtkTransform()
-    vTransform.Scale(300, 300, 300)
+    vTransform.Scale(150, 150, 150)
     vTransform.RotateX(self.rotateXList[index])
     vTransform.RotateY(self.rotateYList[index])
     vTransform.RotateZ(self.rotateZList[index])
@@ -482,23 +502,18 @@ class SliceScrollerLogic(object):
     return True
 
 class Slice(object):
-  def __init__(self):
+  def __init__(self, name=None):
     self.x = 0
     self.y = 0
     self.z = 0
     self.xAngle = 0
     self.yAngle = 0
     self.zAngle = 0
-    self.name = "default"
-  
-  def __init__(self, name):
-    self.x = 0
-    self.y = 0
-    self.z = 0
-    self.xAngle = 0
-    self.yAngle = 0
-    self.zAngle = 0
-    self.name = name
+    if name is None:
+      self.name = "default"
+    else:
+      self.name = name
+    self.scaling = 150
   
   def setPosition(self, x, y, z):
     self.x = x
@@ -520,3 +535,5 @@ class Slice(object):
     self.yAngle = xyzAng[1]
     self.zAngle = xyzAng[2]
 
+  def setScaling(self, scaling):
+    self.scaling = scaling
