@@ -2,7 +2,7 @@ import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 
-class SliceScroller:
+class SliceScroller(object):
   def __init__(self, parent):
     parent.title = "Freehand Slice Scroller" 
     parent.categories = ["Freehand"]
@@ -20,7 +20,7 @@ class SliceScroller:
     # is created.  Since this module may be discovered before SelfTests itself,
     # create the list if it doesn't already exist.
 
-class SliceScrollerWidget:
+class SliceScrollerWidget(object):
   def __init__(self, parent = None):
     if not parent:
       self.parent = slicer.qMRMLWidget()
@@ -80,8 +80,8 @@ class SliceScrollerWidget:
     self.xSlider = ctk.ctkSliderWidget()
     self.xSlider.decimals = 2
     self.xSlider.enabled = True
-    self.xSlider.maximum = 2
-    self.xSlider.minimum = -2
+    self.xSlider.maximum = 1
+    self.xSlider.minimum = -1
     self.xSlider.value = 0
     self.xSlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - X Position", self.xSlider)
@@ -89,8 +89,8 @@ class SliceScrollerWidget:
     self.ySlider = ctk.ctkSliderWidget()
     self.ySlider.decimals = 2
     self.ySlider.enabled = True
-    self.ySlider.maximum = 2
-    self.ySlider.minimum = -2
+    self.ySlider.maximum = 1
+    self.ySlider.minimum = -1
     self.ySlider.value = 0   
     self.ySlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Y Position", self.ySlider)
@@ -98,8 +98,8 @@ class SliceScrollerWidget:
     self.zSlider = ctk.ctkSliderWidget()
     self.zSlider.decimals = 2
     self.zSlider.enabled = True
-    self.zSlider.maximum = 2
-    self.zSlider.minimum = -2
+    self.zSlider.maximum = 1
+    self.zSlider.minimum = -1
     self.zSlider.value = 0
     self.zSlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Z Position", self.zSlider)
@@ -249,7 +249,7 @@ class SliceScrollerWidget:
       qt.QMessageBox.warning(slicer.util.mainWindow(), 
           "Reload and Test", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
 
-class SliceScrollerLogic:
+class SliceScrollerLogic(object):
   """This class should implement all the actual 
   computation done by your module.  The interface 
   should be such that other python code can import
@@ -261,7 +261,7 @@ class SliceScrollerLogic:
     self.scene.SetUndoOn()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
     
-    self.currentSlice = Slice('test.png')
+    self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
 
     # yay, adding images to slicer
     planeSource = vtk.vtkPlaneSource()
@@ -472,7 +472,7 @@ class SliceScrollerLogic:
   def run(self,inputVolume,outputVolume,enableScreenshots=0,screenshotScaleFactor=1):
     """Run the actual algorithm"""
 
-    self.delayDisplay('Running the aglorithm')
+    self.delayDisplay('Running the algorithm')
 
     self.enableScreenshots = enableScreenshots
     self.screenshotScaleFactor = screenshotScaleFactor
@@ -481,7 +481,7 @@ class SliceScrollerLogic:
 
     return True
 
-class Slice:
+class Slice(object):
   def __init__(self):
     self.x = 0
     self.y = 0
