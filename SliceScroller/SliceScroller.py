@@ -274,8 +274,8 @@ class SliceScrollerLogic(object):
   """
   def __init__(self):
     self.scene = slicer.mrmlScene
-    self.scene.SetUndoOn()
-    self.scene.SaveStateForUndo(self.scene.GetNodes())
+    #self.scene.SetUndoOn()
+    #self.scene.SaveStateForUndo(self.scene.GetNodes())
     
     self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
 
@@ -286,35 +286,35 @@ class SliceScrollerLogic(object):
     reader.SetFileName(self.currentSlice.name)
 
     # model node
-    model = slicer.vtkMRMLModelNode()
-    model.SetScene(self.scene)
-    model.SetName(self.currentSlice.name)
-    model.SetAndObservePolyData(planeSource.GetOutput())
+    self.model = slicer.vtkMRMLModelNode()
+    self.model.SetScene(self.scene)
+    self.model.SetName(self.currentSlice.name)
+    self.model.SetAndObservePolyData(planeSource.GetOutput())
 
     # model display node
-    modelDisplay = slicer.vtkMRMLModelDisplayNode()
-    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
-    modelDisplay.SetScene(self.scene)
-    self.scene.AddNode(modelDisplay)
+    self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    self.modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(self.modelDisplay)
 
     # connecting model node w/ its model display node
-    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
+    self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
 
     # adding tiff file as texture to modelDisplay
-    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
-    self.scene.AddNode(model)
+    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(self.model)
 
     # now doing a linear transform to set coordinates and orientation of plane
-    transform = slicer.vtkMRMLLinearTransformNode()
-    self.scene.AddNode(transform)
-    model.SetAndObserveTransformNodeID(transform.GetID())
+    self.transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(self.transform)
+    self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(150, 150, 150)
     vTransform.RotateX(0)
     vTransform.RotateY(0)
     vTransform.RotateZ(0)
 
-    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+    self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
   def setXPosition(self, xpos):
     self.currentSlice.x = xpos
@@ -345,8 +345,11 @@ class SliceScrollerLogic(object):
     self.updateScene()
 
   def updateScene(self):
-    self.scene.Undo()
-    self.scene.SaveStateForUndo(self.scene.GetNodes())
+    #self.scene.Undo()
+    #self.scene.SaveStateForUndo(self.scene.GetNodes())
+    self.scene.RemoveNode(self.transform)
+    self.scene.RemoveNode(self.modelDisplay)
+    self.scene.RemoveNode(self.model)
 
     planeSource = vtk.vtkPlaneSource()
     planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
@@ -354,34 +357,34 @@ class SliceScrollerLogic(object):
     reader.SetFileName(self.currentSlice.name)
 
     # model node
-    model = slicer.vtkMRMLModelNode()
-    model.SetScene(self.scene)
-    model.SetName(self.currentSlice.name)
-    model.SetAndObservePolyData(planeSource.GetOutput())
+    self.model = slicer.vtkMRMLModelNode()
+    self.model.SetScene(self.scene)
+    self.model.SetName(self.currentSlice.name)
+    self.model.SetAndObservePolyData(planeSource.GetOutput())
 
     # model display node
-    modelDisplay = slicer.vtkMRMLModelDisplayNode()
-    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
-    modelDisplay.SetScene(self.scene)
-    self.scene.AddNode(modelDisplay)
+    self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    self.modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(self.modelDisplay)
 
     # connecting model node w/ its model display node
-    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
+    self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
 
     # adding tiff file as texture to modelDisplay
-    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
-    self.scene.AddNode(model)
+    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(self.model)
 
     # now doing a linear transform to set coordinates and orientation of plane
-    transform = slicer.vtkMRMLLinearTransformNode()
-    self.scene.AddNode(transform)
-    model.SetAndObserveTransformNodeID(transform.GetID())
+    self.transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(self.transform)
+    self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
     vTransform.RotateX(self.currentSlice.xAngle)
     vTransform.RotateY(self.currentSlice.yAngle)
     vTransform.RotateZ(self.currentSlice.zAngle)
-    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+    self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def selectSlice(self, index):
     self.scene.Undo()
