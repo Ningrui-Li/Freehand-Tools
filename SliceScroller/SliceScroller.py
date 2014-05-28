@@ -100,14 +100,14 @@ class SliceScrollerWidget:
     self.ySlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Y Position", self.ySlider)
 
-    """self.zSlider = ctk.ctkSliderWidget()
+    self.zSlider = ctk.ctkSliderWidget()
     self.zSlider.decimals = 2
     self.zSlider.enabled = True
     self.zSlider.maximum = 1
     self.zSlider.minimum = -1
     self.zSlider.value = 0
     self.zSlider.singleStep = 0.01
-    orientationFormLayout.addRow("Center - Z Position", self.zSlider)"""
+    orientationFormLayout.addRow("Center - Z Position", self.zSlider)
 
     # euler angle orientation sliders
     self.pointPCoordinateBox = ctk.ctkCoordinatesWidget()
@@ -142,7 +142,7 @@ class SliceScrollerWidget:
     self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
-    #self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
+    self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
     self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
     self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
     self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
@@ -262,6 +262,9 @@ class SliceScrollerLogic:
   """
   def __init__(self):
     self.scene = slicer.mrmlScene
+    self.scene.SetUndoOn()
+    self.scene.SaveStateForUndo(self.scene.GetNodes())
+
     self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
 
     # yay, adding images to slicer
