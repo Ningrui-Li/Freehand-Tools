@@ -303,6 +303,11 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
+    #imageListFileName = './imageList.txt'
+    #imageListFileIn = open(imageListFileName, 'r')
+
+    self.imageList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
+
   def setXPosition(self, xpos):
     self.currentSlice.x = xpos
     self.updateScene()
@@ -439,11 +444,10 @@ class SliceScrollerLogic:
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def selectSlice(self, index):
-    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.'
-    imgFileSuffix = '.png'
-    slices = [10, 26, 41, 57, 72, 87]
+    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
+    #imgFileSuffix = '.png'
     #self.currentSlice.name = imgFilePrefix + str(slices[index]) + imgFileSuffix
-    self.currentSlice = Slice(imgFilePrefix + str(slices[index]) + imgFileSuffix)
+    self.currentSlice = Slice(imgFilePrefix + str(self.imageList[index]))
     self.updateScene()
 
   def hasImageData(self,volumeNode):
