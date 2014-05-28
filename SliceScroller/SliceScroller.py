@@ -2,7 +2,7 @@ import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 
-class SliceScroller(object):
+class SliceScroller:
   def __init__(self, parent):
     parent.title = "Freehand Slice Scroller" 
     parent.categories = ["Freehand"]
@@ -18,7 +18,7 @@ class SliceScroller(object):
     # is created.  Since this module may be discovered before SelfTests itself,
     # create the list if it doesn't already exist.
 
-class SliceScrollerWidget(object):
+class SliceScrollerWidget:
   def __init__(self, parent = None):
     if not parent:
       self.parent = slicer.qMRMLWidget()
@@ -265,7 +265,7 @@ class SliceScrollerWidget(object):
       qt.QMessageBox.warning(slicer.util.mainWindow(), 
           "Reload and Test", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
 
-class SliceScrollerLogic(object):
+class SliceScrollerLogic:
   """This class should implement all the actual 
   computation done by your module.  The interface 
   should be such that other python code can import
@@ -504,7 +504,7 @@ class SliceScrollerLogic(object):
 
     return True
 
-class Slice(object):
+class Slice:
   def __init__(self, name=None):
     self.x = 0
     self.y = 0
