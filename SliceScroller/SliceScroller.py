@@ -274,8 +274,8 @@ class SliceScrollerLogic:
   """
   def __init__(self):
     self.scene = slicer.mrmlScene
-    #self.scene.SetUndoOn()
-    #self.scene.SaveStateForUndo(self.scene.GetNodes())
+    self.scene.SetUndoOn()
+    self.scene.SaveStateForUndo(self.scene.GetNodes())
     
     self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
 
