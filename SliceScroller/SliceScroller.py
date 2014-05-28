@@ -110,33 +110,24 @@ class SliceScrollerWidget(object):
     orientationFormLayout.addRow("Center - Z Position", self.zSlider)
 
     # euler angle orientation sliders
+    self.pointPCoordinateBox = ctk.ctkCoordinatesWidget()
+    self.pointPCoordinateBox.dimension = 3
+    self.pointPCoordinateBox.decimals = 2
+    self.pointPCoordinateBox.singleStep = 0.01
+    self.pointPCoordinateBox.enabled = True
+    orientationFormLayout.addRow("Point P Coordinates", self.pointPCoordinateBox)
 
-    self.xAngleSlider = ctk.ctkSliderWidget()
-    self.xAngleSlider.decimals = 1
-    self.xAngleSlider.enabled = True
-    self.xAngleSlider.maximum = 180
-    self.xAngleSlider.minimum = -180
-    self.xAngleSlider.value = 0
-    self.xAngleSlider.singleStep = 0.1
-    orientationFormLayout.addRow("X Angle", self.xAngleSlider)
+    self.pointQCoordinateBox = ctk.ctkCoordinatesWidget()
+    self.pointQCoordinateBox.dimension = 3
+    self.pointQCoordinateBox.decimals = 2
+    self.pointQCoordinateBox.singleStep = 0.01
+    orientationFormLayout.addRow("Point Q Coordinates", self.pointQCoordinateBox)
 
-    self.yAngleSlider = ctk.ctkSliderWidget()
-    self.yAngleSlider.decimals = 1
-    self.yAngleSlider.enabled = True
-    self.yAngleSlider.maximum = 180
-    self.yAngleSlider.minimum = -180
-    self.yAngleSlider.value = 0
-    self.yAngleSlider.singleStep = 0.1
-    orientationFormLayout.addRow("Y Angle", self.yAngleSlider)
-
-    self.zAngleSlider = ctk.ctkSliderWidget()
-    self.zAngleSlider.decimals = 1
-    self.zAngleSlider.enabled = True
-    self.zAngleSlider.maximum = 180
-    self.zAngleSlider.minimum = -180
-    self.zAngleSlider.value = 0
-    self.zAngleSlider.singleStep = 0.1
-    orientationFormLayout.addRow("Z Angle", self.zAngleSlider)
+    self.pointRCoordinateBox = ctk.ctkCoordinatesWidget()
+    self.pointRCoordinateBox.dimension = 3
+    self.pointRCoordinateBox.decimals = 2  
+    self.pointRCoordinateBox.singleStep = 0.01
+    orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
 
     # image size scaling slider
     self.scalingSlider = ctk.ctkSliderWidget()
@@ -152,9 +143,9 @@ class SliceScrollerWidget(object):
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
-    self.xAngleSlider.connect('valueChanged(double)', self.onXAngleValueChanged)    
-    self.yAngleSlider.connect('valueChanged(double)', self.onYAngleValueChanged)    
-    self.zAngleSlider.connect('valueChanged(double)', self.onZAngleValueChanged)    
+    self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
+    self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
+    self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
     self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
     
     self.logic = SliceScrollerLogic()
@@ -172,17 +163,23 @@ class SliceScrollerWidget(object):
     self.logic.setYPosition(value)
 
   def onZPositionValueChanged(self, value):
-    self.logic.setZPosition(value)
+    self.logic.setYPosition(value)
 
-  def onXAngleValueChanged(self, value):
-    self.logic.setXAngle(value)
+  # For these methods, the actual value doesn't actually matter.
+  # It only matters that this function is called when there is a change in coordinates, so 
+  # coordinates can be updated once a change is detected.
+  def onPCoordinatesChanged(self, value):
+    coords = [float(x) for x in self.pointPCoordinateBox.coordinates.split(',')]
+    self.logic.setPCoords(coords)
 
-  def onYAngleValueChanged(self, value):
-    self.logic.setYAngle(value)
+  def onQCoordinatesChanged(self, value):
+    coords = [float(x) for x in self.pointQCoordinateBox.coordinates.split(',')]
+    self.logic.setQCoords(coords)
 
-  def onZAngleValueChanged(self, value):
-    self.logic.setZAngle(value)
-  
+  def onRCoordinatesChanged(self, value):
+    coords = [float(x) for x in self.pointRCoordinateBox.coordinates.split(',')]
+    self.logic.setRCoords(coords)
+
   def onScalingValueChanged(self, value):
     self.logic.setScaling(value)
 
@@ -301,29 +298,8 @@ class SliceScrollerLogic(object):
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(150, 150, 150)
-    # picking three arbitrary points to be plane of alignment
-    p = [1, 1, 1]
-    q = [-1, 2, 3]
-    r = [-5, 6, 1]
-
     
-    # calculating vectors pq and pr, then taking their cross product
-    # to acquire normal to the new, user-defined plane 
-    pq = np.array([q[0]-p[0], q[1]-p[1], q[2]-p[2]])
-    pr = np.array([r[0]-p[0], r[1]-p[1], r[2]-p[2]])
-    newPlaneNormal = np.cross(pq, pr)
-    # take cross product of normal of user-defined plane and 
-    # default plane (0 0 1) to get axis of rotation
-    originalNormal = np.array([0, 0, 1])
-    axisOfRotation = np.cross(newPlaneNormal, originalNormal)
-    # now use dot product definition to calculate angle of rotation
-    # dot product: A (dot) B = |A|*|B|*cos(angle)
-    newPlaneNormalLength = np.sqrt(newPlaneNormal[0]**2 + newPlaneNormal[1]**2 + newPlaneNormal[2]**2)
-    angleOfRotation = np.arccos(np.dot(newPlaneNormal, originalNormal) / newPlaneNormalLength) # in radians
-    angleOfRotation = angleOfRotation * 180/np.pi # conversion to degrees
-    print angleOfRotation
-    
-    vTransform.RotateWXYZ(angleOfRotation, *axisOfRotation)
+    vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
@@ -339,16 +315,22 @@ class SliceScrollerLogic(object):
     self.currentSlice.z = zpos
     self.updateScene()
 
-  def setXAngle(self, xpos):
-    self.currentSlice.xAngle = xpos
+  def setPCoords(self, coords):
+    self.currentSlice.PCoordinates = coords
+    #print "P Coordinates are now", coords
+    self.currentSlice.updateRotation()
     self.updateScene()
 
-  def setYAngle(self, ypos):
-    self.currentSlice.yAngle = ypos
+  def setQCoords(self, coords):
+    self.currentSlice.QCoordinates = coords
+    #print "Q Coordinates are now", coords
+    self.currentSlice.updateRotation()
     self.updateScene()
-  
-  def setZAngle(self, zpos):
-    self.currentSlice.zAngle = zpos
+
+  def setRCoords(self, coords):
+    self.currentSlice.RCoordinates = coords
+    #print "R Coordinates are now", coords
+    self.currentSlice.updateRotation()
     self.updateScene()
 
   def setScaling(self, scaling):
@@ -390,9 +372,7 @@ class SliceScrollerLogic(object):
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
-    vTransform.RotateX(self.currentSlice.xAngle)
-    vTransform.RotateY(self.currentSlice.yAngle)
-    vTransform.RotateZ(self.currentSlice.zAngle)
+    vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def selectSlice(self, index):
@@ -518,14 +498,16 @@ class Slice(object):
     self.x = 0
     self.y = 0
     self.z = 0
-    self.xAngle = 0
-    self.yAngle = 0
-    self.zAngle = 0
+    self.PCoordinates = [0, 0, 0]
+    self.QCoordinates = [0, 0, 0]
+    self.RCoordinates = [0, 0, 0]
     if name is None:
       self.name = "default"
     else:
       self.name = name
     self.scaling = 150
+    self.rotationAxis = [0, 0, 1]
+    self.rotationAngle = 0
   
   def setPosition(self, x, y, z):
     self.x = x
@@ -549,3 +531,24 @@ class Slice(object):
 
   def setScaling(self, scaling):
     self.scaling = scaling
+
+  def updateRotation(self):
+    p = np.array(self.PCoordinates)
+    q = np.array(self.QCoordinates)
+    r = np.array(self.RCoordinates)
+    # calculating vectors pq and pr, then taking their cross product
+    # to acquire normal to the new, user-defined plane 
+    pq = np.subtract(q, p)
+    pr = np.subtract(r, p)
+    newPlaneNormal = np.cross(pq, pr)
+    # take cross product of normal of user-defined plane and 
+    # default plane (0 0 1) to get axis of rotation
+    originalNormal = np.array([0, 0, 1])
+    self.rotationAxis = np.cross(newPlaneNormal, originalNormal)
+    # now use dot product definition to calculate angle of rotation
+    # dot product: A (dot) B = |A|*|B|*cos(angle)
+    newPlaneNormalLength = np.sqrt(newPlaneNormal[0]**2 + newPlaneNormal[1]**2 + newPlaneNormal[2]**2)
+    self.rotationAngle = np.arccos(np.dot(newPlaneNormal, originalNormal) / newPlaneNormalLength) # in radians
+    self.rotationAngle = self.rotationAngle * 180/np.pi # conversion to degrees
+    #print "Rotation Angle is now", self.rotationAngle
+    #print "Rotation Axis is now", self.rotationAxis
