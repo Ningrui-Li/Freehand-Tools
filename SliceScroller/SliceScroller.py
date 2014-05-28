@@ -439,47 +439,12 @@ class SliceScrollerLogic:
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def selectSlice(self, index):
-    self.scene.Undo()
-    self.scene.SaveStateForUndo(self.scene.GetNodes())
-    imgFilePrefix = './data/test'
-    imgFileSuffix = '.tiff'
-    # yay, adding images to slicer
-    planeSource = vtk.vtkPlaneSource()
-
-    reader = vtk.vtkTIFFReader()
-    reader.SetFileName(imgFilePrefix + str(self.imageList[index]) + imgFileSuffix)
-    #reader.CanReadFile('imgFilePrefix + str(self.imageList[0]) + imgFileSuffix')
-
-    # model node
-    model = slicer.vtkMRMLModelNode()
-    model.SetScene(self.scene)
-    model.SetName("test " + str(self.imageList[index]) + "cow")
-    model.SetAndObservePolyData(planeSource.GetOutput())
-
-    # model display node
-    modelDisplay = slicer.vtkMRMLModelDisplayNode()
-    modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
-    modelDisplay.SetScene(self.scene)
-    self.scene.AddNode(modelDisplay)
-
-    # connecting model node w/ its model display node
-    model.SetAndObserveDisplayNodeID(modelDisplay.GetID())
-
-    # adding tiff file as texture to modelDisplay
-    modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
-    self.scene.AddNode(model)
-
-    # now doing a linear transform to set coordinates and orientation of plane
-    transform = slicer.vtkMRMLLinearTransformNode()
-    self.scene.AddNode(transform)
-    model.SetAndObserveTransformNodeID(transform.GetID())
-    vTransform = vtk.vtkTransform()
-    vTransform.Scale(150, 150, 150)
-    vTransform.RotateX(self.rotateXList[index])
-    vTransform.RotateY(self.rotateYList[index])
-    vTransform.RotateZ(self.rotateZList[index])
-
-    transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.'
+    imgFileSuffix = '.png'
+    slices = [10, 26, 41, 57, 72, 87]
+    #self.currentSlice.name = imgFilePrefix + str(slices[index]) + imgFileSuffix
+    self.currentSlice = Slice(imgFilePrefix + str(slices[index]) + imgFileSuffix)
+    self.updateScene()
 
   def hasImageData(self,volumeNode):
     """This is a dummy logic method that 
