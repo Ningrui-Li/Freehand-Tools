@@ -1,5 +1,6 @@
 import os
 import unittest
+import numpy as np
 from __main__ import vtk, qt, ctk, slicer
 
 class SliceScroller(object):
@@ -146,10 +147,6 @@ class SliceScrollerWidget(object):
     self.scalingSlider.value = 150
     scalingFormLayout.addRow("Scaling", self.scalingSlider)
 
-    # refresh button
-    # self.refreshButton = qt.QPushButton("Refresh")
-    # orientationFormLayout.addRow(self.refreshButton)
-
     # make connections
     self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
@@ -159,11 +156,8 @@ class SliceScrollerWidget(object):
     self.yAngleSlider.connect('valueChanged(double)', self.onYAngleValueChanged)    
     self.zAngleSlider.connect('valueChanged(double)', self.onZAngleValueChanged)    
     self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
-    #self.refreshButton.connect('clicked()', self.onRefresh)
     
     self.logic = SliceScrollerLogic()
-    # call refresh on the slider to set its initial state
-    #self.onRefresh()
 
     # add vertical spacing
     self.layout.addStretch(1)
@@ -191,9 +185,6 @@ class SliceScrollerWidget(object):
   
   def onScalingValueChanged(self, value):
     self.logic.setScaling(value)
-
-  # def onRefresh(self):
-  #  self.slider.maximum = 4 
 
   def cleanup(self):
     pass
@@ -310,9 +301,29 @@ class SliceScrollerLogic(object):
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(150, 150, 150)
-    vTransform.RotateX(0)
-    vTransform.RotateY(0)
-    vTransform.RotateZ(0)
+    # picking three arbitrary points to be plane of alignment
+    p = [1, 1, 1]
+    q = [-1, 2, 3]
+    r = [-5, 6, 1]
+
+    
+    # calculating vectors pq and pr, then taking their cross product
+    # to acquire normal to the new, user-defined plane 
+    pq = np.array([q[0]-p[0], q[1]-p[1], q[2]-p[2]])
+    pr = np.array([r[0]-p[0], r[1]-p[1], r[2]-p[2]])
+    newPlaneNormal = np.cross(pq, pr)
+    # take cross product of normal of user-defined plane and 
+    # default plane (0 0 1) to get axis of rotation
+    originalNormal = np.array([0, 0, 1])
+    axisOfRotation = np.cross(newPlaneNormal, originalNormal)
+    # now use dot product definition to calculate angle of rotation
+    # dot product: A (dot) B = |A|*|B|*cos(angle)
+    newPlaneNormalLength = np.sqrt(newPlaneNormal[0]**2 + newPlaneNormal[1]**2 + newPlaneNormal[2]**2)
+    angleOfRotation = np.arccos(np.dot(newPlaneNormal, originalNormal) / newPlaneNormalLength) # in radians
+    angleOfRotation = angleOfRotation * 180/np.pi # conversion to degrees
+    print angleOfRotation
+    
+    vTransform.RotateWXYZ(angleOfRotation, *axisOfRotation)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
@@ -345,8 +356,6 @@ class SliceScrollerLogic(object):
     self.updateScene()
 
   def updateScene(self):
-    #self.scene.Undo()
-    #self.scene.SaveStateForUndo(self.scene.GetNodes())
     self.scene.RemoveNode(self.transform)
     self.scene.RemoveNode(self.modelDisplay)
     self.scene.RemoveNode(self.model)
