@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from __main__ import vtk, qt, ctk, slicer
 
-class SliceScroller(object):
+class SliceScroller:
   def __init__(self, parent):
     parent.title = "Freehand Slice Scroller" 
     parent.categories = ["Freehand"]
@@ -19,7 +19,7 @@ class SliceScroller(object):
     # is created.  Since this module may be discovered before SelfTests itself,
     # create the list if it doesn't already exist.
 
-class SliceScrollerWidget(object):
+class SliceScrollerWidget:
   def __init__(self, parent = None):
     if not parent:
       self.parent = slicer.qMRMLWidget()
@@ -163,7 +163,7 @@ class SliceScrollerWidget(object):
     self.logic.setYPosition(value)
 
   def onZPositionValueChanged(self, value):
-    self.logic.setYPosition(value)
+    self.logic.setZPosition(value)
 
   # For these methods, the actual value doesn't actually matter.
   # It only matters that this function is called when there is a change in coordinates, so 
@@ -253,7 +253,7 @@ class SliceScrollerWidget(object):
       qt.QMessageBox.warning(slicer.util.mainWindow(), 
           "Reload and Test", 'Exception!\n\n' + str(e) + "\n\nSee Python Console for Stack Trace")
 
-class SliceScrollerLogic(object):
+class SliceScrollerLogic:
   """This class should implement all the actual 
   computation done by your module.  The interface 
   should be such that other python code can import
@@ -262,9 +262,6 @@ class SliceScrollerLogic(object):
   """
   def __init__(self):
     self.scene = slicer.mrmlScene
-    #self.scene.SetUndoOn()
-    #self.scene.SaveStateForUndo(self.scene.GetNodes())
-    
     self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
 
     # yay, adding images to slicer
@@ -288,7 +285,7 @@ class SliceScrollerLogic(object):
     # connecting model node w/ its model display node
     self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
 
-    # adding tiff file as texture to modelDisplay
+    # adding png file as texture to modelDisplay
     self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
     self.scene.AddNode(self.model)
 
@@ -317,25 +314,88 @@ class SliceScrollerLogic(object):
 
   def setPCoords(self, coords):
     self.currentSlice.PCoordinates = coords
-    #print "P Coordinates are now", coords
+    newCenter = self.calcNewImageCenter(coords)
+    self.updatePlaneOffset(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setQCoords(self, coords):
     self.currentSlice.QCoordinates = coords
-    #print "Q Coordinates are now", coords
+    newCenter = self.calcNewImageCenter(coords)
+    self.updatePlaneOffset(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setRCoords(self, coords):
     self.currentSlice.RCoordinates = coords
-    #print "R Coordinates are now", coords
+    newCenter = self.calcNewImageCenter(coords)
+    self.updatePlaneOffset(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setScaling(self, scaling):
     self.currentSlice.scaling = scaling
     self.updateScene()
+
+  def updatePlaneOffset(self, coords):
+    self.scene.RemoveNode(self.transform)
+    self.scene.RemoveNode(self.modelDisplay)
+    self.scene.RemoveNode(self.model)
+
+    planeSource = vtk.vtkPlaneSource()
+    planeSource.SetCenter(coords[0], coords[1], coords[2])
+    self.currentSlice.x = coords[0]
+    self.currentSlice.y = coords[1]
+    self.currentSlice.z = coords[2]
+    reader = vtk.vtkPNGReader()
+    reader.SetFileName(self.currentSlice.name)
+
+    # model node
+    self.model = slicer.vtkMRMLModelNode()
+    self.model.SetScene(self.scene)
+    self.model.SetName(self.currentSlice.name)
+    self.model.SetAndObservePolyData(planeSource.GetOutput())
+
+    # model display node
+    self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
+    self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+    self.modelDisplay.SetScene(self.scene)
+    self.scene.AddNode(self.modelDisplay)
+
+    # connecting model node w/ its model display node
+    self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
+
+    # adding tiff file as texture to modelDisplay
+    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    self.scene.AddNode(self.model)
+
+    # now doing a linear transform to set coordinates and orientation of plane
+    self.transform = slicer.vtkMRMLLinearTransformNode()
+    self.scene.AddNode(self.transform)
+    self.model.SetAndObserveTransformNodeID(self.transform.GetID())
+    vTransform = vtk.vtkTransform()
+    vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
+    vTransform.RotateWXYZ(0, *self.currentSlice.rotationAxis)
+    self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+    
+  def calcNewImageCenter(self, p):
+    # New image center will be set as the point on the plane closest to the origin
+    # Let the origin be defined as the point on the plane closest to the center of the 3D Slicer volume
+    # http://en.wikipedia.org/wiki/Point_on_plane_closest_to_origin
+
+    self.currentSlice.updateRotation()
+    # solving for D in plane equation:
+    # a*x + b*y + c*z + d = 0
+    p = np.array(self.currentSlice.PCoordinates)
+    planeNormal = np.array(self.currentSlice.rotationAxis)
+    # Use updated point's coordinates for x, y, z values. Choice of point is arbitrary.
+    d = -1 * np.dot(p, planeNormal)
+    # now calculating coordinates of new center
+    squaredNorm = np.dot(p, p)
+    newCenterX = p[0]*d / squaredNorm
+    newCenterY = p[1]*d / squaredNorm
+    newCenterZ = p[2]*d / squaredNorm
+    return [newCenterX, newCenterY, newCenterZ]
 
   def updateScene(self):
     self.scene.RemoveNode(self.transform)
