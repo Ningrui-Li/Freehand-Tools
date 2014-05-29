@@ -188,15 +188,24 @@ class SliceScrollerWidget:
   # coordinates can be updated once a change is detected.
   def onPCoordinatesChanged(self, value):
     coords = [float(x) for x in self.pointPCoordinateBox.coordinates.split(',')]
-    self.logic.setPCoords(coords)
+    newCenter = self.logic.setPCoords(coords)
+    self.xSlider.value = newCenter[0]
+    self.ySlider.value = newCenter[1]
+    self.zSlider.value = newCenter[2]
 
   def onQCoordinatesChanged(self, value):
     coords = [float(x) for x in self.pointQCoordinateBox.coordinates.split(',')]
-    self.logic.setQCoords(coords)
+    newCenter = self.logic.setQCoords(coords)
+    self.xSlider.value = newCenter[0]
+    self.ySlider.value = newCenter[1]
+    self.zSlider.value = newCenter[2]
 
   def onRCoordinatesChanged(self, value):
     coords = [float(x) for x in self.pointRCoordinateBox.coordinates.split(',')]
-    self.logic.setRCoords(coords)
+    newCenter = self.logic.setRCoords(coords)
+    self.xSlider.value = newCenter[0]
+    self.ySlider.value = newCenter[1]
+    self.zSlider.value = newCenter[2]
 
   def onScalingValueChanged(self, value):
     self.logic.setScaling(value)
@@ -347,18 +356,21 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
+    return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
   def setQCoords(self, coords):
     self.currentSlice.QCoordinates = coords
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
+    return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
   def setRCoords(self, coords):
     self.currentSlice.RCoordinates = coords
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
-    self.updateScene()
+    self.updateScene()   
+    return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
   def setScaling(self, scaling):
     self.currentSlice.scaling = scaling
@@ -400,10 +412,15 @@ class SliceScrollerLogic:
     self.scene.RemoveNode(self.model)
 
     planeSource = vtk.vtkPlaneSource()
+    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     planeSource.SetNormal(*self.currentSlice.planeNormal)
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
-
+    
+    print planeSource.GetPoint1(), planeSource.GetPoint2()
+    #planeSource.SetPoint1(0.5, -0.5, 0)
+    #planeSource.SetPoint2(-0.5, 0.5, 0)
+    
     # model node
     self.model = slicer.vtkMRMLModelNode()
     self.model.SetScene(self.scene)
@@ -430,7 +447,7 @@ class SliceScrollerLogic:
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
     
-    vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    #vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     # Rotation, but still on same plane
     vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
     print "The normal to the plane is ", self.currentSlice.planeNormal
