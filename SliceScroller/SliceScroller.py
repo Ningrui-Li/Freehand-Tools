@@ -388,9 +388,9 @@ class SliceScrollerLogic:
     if (np.isnan(newCenterZ)):
       newCenterZ = 0
     print newCenterX, newCenterY, newCenterZ
-    self.currentSlice.x = newCenter[0]
-    self.currentSlice.y = newCenter[1]
-    self.currentSlice.z = newCenter[2]
+    self.currentSlice.x = newCenterX
+    self.currentSlice.y = newCenterY
+    self.currentSlice.z = newCenterZ
 
   def updateScene(self):
     self.scene.RemoveNode(self.transform)
