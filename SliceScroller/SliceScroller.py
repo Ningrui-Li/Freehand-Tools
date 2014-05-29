@@ -365,7 +365,10 @@ class SliceScrollerLogic:
     self.updateScene()
     
   def calcAndSetNewImageCenter(self, p):
-    # New image center will be set as the point on the plane closest to the origin
+    self.currentSlice.x = p[0]
+    self.currentSlice.y = p[1]
+    self.currentSlice.z = p[2]
+  """  # New image center will be set as the point on the plane closest to the origin
     # Let the origin be defined as the point on the plane closest to the center of the 3D Slicer volume
     # http://en.wikipedia.org/wiki/Point_on_plane_closest_to_origin
 
@@ -381,16 +384,16 @@ class SliceScrollerLogic:
     newCenterX = p[0]*d / squaredNorm
     newCenterY = p[1]*d / squaredNorm
     newCenterZ = p[2]*d / squaredNorm
-    if (np.isnan(newCenterX)):
-      newCenterX = 0
-    if (np.isnan(newCenterY)):
-      newCenterY = 0
-    if (np.isnan(newCenterZ)):
-      newCenterZ = 0
+    if (np.isnan(newCenterX) or np.isnan(newCenterY) or np.isnan(newCenterZ)):
+      newCenterX = p[0]
+      newCenterY = p[1]
+      newCenterZ = p[2]
     print newCenterX, newCenterY, newCenterZ
     self.currentSlice.x = newCenterX
     self.currentSlice.y = newCenterY
-    self.currentSlice.z = newCenterZ
+    self.currentSlice.z = newCenterZ"""
+
+  
 
   def updateScene(self):
     self.scene.RemoveNode(self.transform)
@@ -398,7 +401,8 @@ class SliceScrollerLogic:
     self.scene.RemoveNode(self.model)
 
     planeSource = vtk.vtkPlaneSource()
-    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    #planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    planeSource.SetCenter(0, 0, 0)
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
 
@@ -427,11 +431,16 @@ class SliceScrollerLogic:
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
-
+    
+    #vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     # Rotation, but still on same plane
     vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
+    print "The normal to the plane is ", self.currentSlice.planeNormal
     # Rotation for plane alignment
     vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
+
+    vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
