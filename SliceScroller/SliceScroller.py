@@ -64,10 +64,11 @@ class SliceScrollerWidget:
     scrollingFormLayout = qt.QFormLayout(scrollingCollapsibleButton)
 
     # Slice selection scroller
-    self.slider = ctk.ctkSliderWidget()
-    self.slider.decimals = 0
-    self.slider.enabled = True
-    scrollingFormLayout.addRow("Slices", self.slider)
+    self.sliceSlider = ctk.ctkSliderWidget()
+    self.sliceSlider.decimals = 0
+    self.sliceSlider.enabled = True
+    self.sliceSlider.maximum = 2359
+    scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
     # orientation sliders
     orientationCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -109,7 +110,16 @@ class SliceScrollerWidget:
     self.zSlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Z Position", self.zSlider)
 
-    # euler angle orientation sliders
+    self.rotationSlider = ctk.ctkSliderWidget()
+    self.rotationSlider.decimals = 1
+    self.rotationSlider.enabled = True
+    self.rotationSlider.maximum = 180
+    self.rotationSlider.minimum = -180
+    self.rotationSlider.value = 0
+    self.rotationSlider.singleStep = 0.1
+    orientationFormLayout.addRow("Plane Rotation", self.rotationSlider)
+    
+    # plane alignment point input boxes
     self.pointPCoordinateBox = ctk.ctkCoordinatesWidget()
     self.pointPCoordinateBox.dimension = 3
     self.pointPCoordinateBox.decimals = 2
@@ -128,7 +138,7 @@ class SliceScrollerWidget:
     self.pointRCoordinateBox.decimals = 2  
     self.pointRCoordinateBox.singleStep = 0.01
     orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
-
+    
     # image size scaling slider
     self.scalingSlider = ctk.ctkSliderWidget()
     self.scalingSlider.decimals = 0
@@ -138,11 +148,16 @@ class SliceScrollerWidget:
     self.scalingSlider.value = 150
     scalingFormLayout.addRow("Scaling", self.scalingSlider)
 
+    """self.console = ctk.ctkConsole()
+    scalingFormLayout.addRow("Console", self.console)
+    self.console.update("huehuehue")"""
+
     # make connections
-    self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
+    self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
+    self.rotationSlider.connect('valueChanged(double)', self.onRotationValueChanged)
     self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
     self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
     self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
@@ -164,6 +179,9 @@ class SliceScrollerWidget:
 
   def onZPositionValueChanged(self, value):
     self.logic.setZPosition(value)
+
+  def onRotationValueChanged(self, value):
+    self.logic.setRotationValue(value)
 
   # For these methods, the actual value doesn't actually matter.
   # It only matters that this function is called when there is a change in coordinates, so 
@@ -320,73 +338,33 @@ class SliceScrollerLogic:
     self.currentSlice.z = zpos
     self.updateScene()
 
+  def setRotationValue(self, angle):
+    self.currentSlice.planeRotation = angle
+    self.updateScene()
+
   def setPCoords(self, coords):
     self.currentSlice.PCoordinates = coords
-    newCenter = self.calcNewImageCenter(coords)
-    self.updatePlaneOffset(coords)
+    self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setQCoords(self, coords):
     self.currentSlice.QCoordinates = coords
-    newCenter = self.calcNewImageCenter(coords)
-    self.updatePlaneOffset(coords)
+    self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setRCoords(self, coords):
     self.currentSlice.RCoordinates = coords
-    newCenter = self.calcNewImageCenter(coords)
-    self.updatePlaneOffset(coords)
+    self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.updateScene()
 
   def setScaling(self, scaling):
     self.currentSlice.scaling = scaling
     self.updateScene()
-
-  def updatePlaneOffset(self, coords):
-    self.scene.RemoveNode(self.transform)
-    self.scene.RemoveNode(self.modelDisplay)
-    self.scene.RemoveNode(self.model)
-
-    planeSource = vtk.vtkPlaneSource()
-    planeSource.SetCenter(coords[0], coords[1], coords[2])
-    self.currentSlice.x = coords[0]
-    self.currentSlice.y = coords[1]
-    self.currentSlice.z = coords[2]
-    reader = vtk.vtkPNGReader()
-    reader.SetFileName(self.currentSlice.name)
-
-    # model node
-    self.model = slicer.vtkMRMLModelNode()
-    self.model.SetScene(self.scene)
-    self.model.SetName(self.currentSlice.name)
-    self.model.SetAndObservePolyData(planeSource.GetOutput())
-
-    # model display node
-    self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
-    self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
-    self.modelDisplay.SetScene(self.scene)
-    self.scene.AddNode(self.modelDisplay)
-
-    # connecting model node w/ its model display node
-    self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
-
-    # adding tiff file as texture to modelDisplay
-    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
-    self.scene.AddNode(self.model)
-
-    # now doing a linear transform to set coordinates and orientation of plane
-    self.transform = slicer.vtkMRMLLinearTransformNode()
-    self.scene.AddNode(self.transform)
-    self.model.SetAndObserveTransformNodeID(self.transform.GetID())
-    vTransform = vtk.vtkTransform()
-    vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
-    vTransform.RotateWXYZ(0, *self.currentSlice.rotationAxis)
-    self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
-  def calcNewImageCenter(self, p):
+  def calcAndSetNewImageCenter(self, p):
     # New image center will be set as the point on the plane closest to the origin
     # Let the origin be defined as the point on the plane closest to the center of the 3D Slicer volume
     # http://en.wikipedia.org/wiki/Point_on_plane_closest_to_origin
@@ -394,16 +372,25 @@ class SliceScrollerLogic:
     self.currentSlice.updateRotation()
     # solving for D in plane equation:
     # a*x + b*y + c*z + d = 0
-    p = np.array(self.currentSlice.PCoordinates)
-    planeNormal = np.array(self.currentSlice.rotationAxis)
+    #p = np.array(self.currentSlice.PCoordinates)
+    planeNormal = np.array(self.currentSlice.planeNormal)
     # Use updated point's coordinates for x, y, z values. Choice of point is arbitrary.
     d = -1 * np.dot(p, planeNormal)
     # now calculating coordinates of new center
-    squaredNorm = np.dot(p, p)
+    squaredNorm = np.dot(planeNormal, planeNormal)
     newCenterX = p[0]*d / squaredNorm
     newCenterY = p[1]*d / squaredNorm
     newCenterZ = p[2]*d / squaredNorm
-    return [newCenterX, newCenterY, newCenterZ]
+    if (np.isnan(newCenterX)):
+      newCenterX = 0
+    if (np.isnan(newCenterY)):
+      newCenterY = 0
+    if (np.isnan(newCenterZ)):
+      newCenterZ = 0
+    print newCenterX, newCenterY, newCenterZ
+    self.currentSlice.x = newCenter[0]
+    self.currentSlice.y = newCenter[1]
+    self.currentSlice.z = newCenter[2]
 
   def updateScene(self):
     self.scene.RemoveNode(self.transform)
@@ -440,7 +427,11 @@ class SliceScrollerLogic:
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
+    # Rotation for plane alignment
     vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
+    # Rotation, but still on same plane
+    vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
+
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def selectSlice(self, index):
@@ -538,8 +529,12 @@ class Slice(object):
     else:
       self.name = name
     self.scaling = 150
-    self.rotationAxis = [0, 0, 1]
+
+    self.rotationAxis = [0, 0, 0]
     self.rotationAngle = 0
+
+    self.planeNormal = [0, 0, 1]
+    self.planeRotation = 0
   
   def setPosition(self, x, y, z):
     self.x = x
@@ -551,7 +546,7 @@ class Slice(object):
     self.y = xyz[1]
     self.z = xyz[2]
 
-  def setAngles(self, xAng, yAng, zAng):
+  """def setAngles(self, xAng, yAng, zAng):
     self.xAngle = xAng
     self.yAngle = yAng
     self.zAngle = zAng
@@ -560,6 +555,7 @@ class Slice(object):
     self.xAngle = xyzAng[0]
     self.yAngle = xyzAng[1]
     self.zAngle = xyzAng[2]
+    """
 
   def setScaling(self, scaling):
     self.scaling = scaling
@@ -572,15 +568,16 @@ class Slice(object):
     # to acquire normal to the new, user-defined plane 
     pq = np.subtract(q, p)
     pr = np.subtract(r, p)
-    newPlaneNormal = np.cross(pq, pr)
+    self.planeNormal = np.cross(pq, pr)
+    print self.planeNormal
     # take cross product of normal of user-defined plane and 
     # default plane (0 0 1) to get axis of rotation
     originalNormal = np.array([0, 0, 1])
-    self.rotationAxis = np.cross(newPlaneNormal, originalNormal)
+    self.rotationAxis = np.cross(self.planeNormal, originalNormal)
     # now use dot product definition to calculate angle of rotation
     # dot product: A (dot) B = |A|*|B|*cos(angle)
-    newPlaneNormalLength = np.sqrt(newPlaneNormal[0]**2 + newPlaneNormal[1]**2 + newPlaneNormal[2]**2)
-    self.rotationAngle = np.arccos(np.dot(newPlaneNormal, originalNormal) / newPlaneNormalLength) # in radians
+    newPlaneNormalLength = np.sqrt(self.planeNormal[0]**2 + self.planeNormal[1]**2 + self.planeNormal[2]**2)
+    self.rotationAngle = np.arccos(np.dot(self.planeNormal, originalNormal) / newPlaneNormalLength) # in radians
     self.rotationAngle = self.rotationAngle * 180/np.pi # conversion to degrees
     #print "Rotation Angle is now", self.rotationAngle
     #print "Rotation Axis is now", self.rotationAxis
