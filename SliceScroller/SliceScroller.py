@@ -427,10 +427,11 @@ class SliceScrollerLogic:
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
-    # Rotation for plane alignment
-    vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
+
     # Rotation, but still on same plane
     vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
+    # Rotation for plane alignment
+    vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
