@@ -365,35 +365,34 @@ class SliceScrollerLogic:
     self.updateScene()
     
   def calcAndSetNewImageCenter(self, p):
-    self.currentSlice.x = p[0]
-    self.currentSlice.y = p[1]
-    self.currentSlice.z = p[2]
-  """  # New image center will be set as the point on the plane closest to the origin
+    #self.currentSlice.x = p[0]
+    #self.currentSlice.y = p[1]
+    #self.currentSlice.z = p[2]
+    # New image center will be set as the point on the plane closest to the origin
     # Let the origin be defined as the point on the plane closest to the center of the 3D Slicer volume
     # http://en.wikipedia.org/wiki/Point_on_plane_closest_to_origin
-
-    self.currentSlice.updateRotation()
+    # self.currentSlice.updateRotation()
     # solving for D in plane equation:
-    # a*x + b*y + c*z + d = 0
+    # a*x + b*y + c*z = d
     #p = np.array(self.currentSlice.PCoordinates)
+    self.currentSlice.updateRotation()
     planeNormal = np.array(self.currentSlice.planeNormal)
     # Use updated point's coordinates for x, y, z values. Choice of point is arbitrary.
-    d = -1 * np.dot(p, planeNormal)
+    p = np.array(p)
+    d = np.dot(p, planeNormal)
     # now calculating coordinates of new center
     squaredNorm = np.dot(planeNormal, planeNormal)
-    newCenterX = p[0]*d / squaredNorm
-    newCenterY = p[1]*d / squaredNorm
-    newCenterZ = p[2]*d / squaredNorm
+    newCenterX = planeNormal[0]*d / squaredNorm
+    newCenterY = planeNormal[1]*d / squaredNorm
+    newCenterZ = planeNormal[2]*d / squaredNorm
     if (np.isnan(newCenterX) or np.isnan(newCenterY) or np.isnan(newCenterZ)):
       newCenterX = p[0]
       newCenterY = p[1]
       newCenterZ = p[2]
-    print newCenterX, newCenterY, newCenterZ
+    print "The new center is: ", newCenterX, newCenterY, newCenterZ
     self.currentSlice.x = newCenterX
     self.currentSlice.y = newCenterY
-    self.currentSlice.z = newCenterZ"""
-
-  
+    self.currentSlice.z = newCenterZ
 
   def updateScene(self):
     self.scene.RemoveNode(self.transform)
@@ -401,8 +400,7 @@ class SliceScrollerLogic:
     self.scene.RemoveNode(self.model)
 
     planeSource = vtk.vtkPlaneSource()
-    #planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-    planeSource.SetCenter(0, 0, 0)
+    planeSource.SetNormal(*self.currentSlice.planeNormal)
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
 
@@ -432,15 +430,10 @@ class SliceScrollerLogic:
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
     
-    #vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     # Rotation, but still on same plane
     vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
     print "The normal to the plane is ", self.currentSlice.planeNormal
-    # Rotation for plane alignment
-    vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
-
-    vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
