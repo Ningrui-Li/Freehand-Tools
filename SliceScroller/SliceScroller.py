@@ -82,7 +82,7 @@ class SliceScrollerWidget:
     self.layout.addWidget(scalingCollapsibleButton)
     scalingFormLayout = qt.QFormLayout(scalingCollapsibleButton)
 
-    # x, y, z center sliders
+    # x, y, z plane center position sliders
     self.xSlider = ctk.ctkSliderWidget()
     self.xSlider.decimals = 2
     self.xSlider.enabled = True
@@ -130,6 +130,7 @@ class SliceScrollerWidget:
     self.pointRCoordinateBox.singleStep = 0.01
     orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
     
+    # plane rotation slider
     self.rotationSlider = ctk.ctkSliderWidget()
     self.rotationSlider.decimals = 1
     self.rotationSlider.enabled = True
@@ -139,6 +140,7 @@ class SliceScrollerWidget:
     self.rotationSlider.singleStep = 0.1
     orientationFormLayout.addRow("Plane Rotation", self.rotationSlider)
 
+    # "x-axis" and "y-axis" sliders
     self.xAxisSlider = ctk.ctkSliderWidget()  
     self.xAxisSlider.decimals = 2
     self.xAxisSlider.enabled = True
@@ -170,7 +172,8 @@ class SliceScrollerWidget:
     scalingFormLayout.addRow("Console", self.console)
     self.console.update("huehuehue")"""
 
-    # make connections
+    # make connections between valueChanged/coordinatesChanged signals and
+    # methods that connect back to the logic.
     self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
@@ -183,10 +186,19 @@ class SliceScrollerWidget:
     self.yAxisSlider.connect('valueChanged(double)', self.onYAxisValueChanged)
     self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
     
+    # declare logic variable that updates image plane properties based on values passed
+    # to it from the user interface
     self.logic = SliceScrollerLogic()
 
     # add vertical spacing
     self.layout.addStretch(1)
+
+  # The following methods are called when a slider/coordinate value changes.
+  # Slider values and coordinates and passed down, and occassionally, results are
+  # returned so as to update the slider values.
+
+  # For example, when P, Q, or R coordinates change, the center of the plane changes such that
+  # it becomes the point on the plane closest to the origin.
 
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
@@ -195,7 +207,7 @@ class SliceScrollerWidget:
     # currently shown in the scene.
     currentSlice = self.logic.selectSlice(int(value))
 
-    # Updating slider values
+    # Updating slider values and coordinates
     self.xSlider.value = currentSlice.x
     self.ySlider.value = currentSlice.y
     self.zSlider.value = currentSlice.z
@@ -203,7 +215,7 @@ class SliceScrollerWidget:
     self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in currentSlice.PCoordinates)
     self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in currentSlice.QCoordinates)
     self.pointRCoordinateBox.coordinates = ','.join(str(coord) for coord in currentSlice.RCoordinates)
-
+    
     self.rotationSlider.value = currentSlice.planeRotation
     self.xAxisSlider.value = currentSlice.xAxisValue
     self.yAxisSlider.value = currentSlice.yAxisValue
