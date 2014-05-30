@@ -314,11 +314,19 @@ class SliceScrollerLogic:
   requiring an instance of the Widget
   """
   def __init__(self):
+    # Creating list of all image slices
+    sliceNameList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
+    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
+
+    self.sliceList = []
+    for name in sliceNameList:
+      self.sliceList.append(Slice(imgFilePrefix + name))
+
     self.scene = slicer.mrmlScene
     self.scene.SetUndoOn()
     self.scene.SaveStateForUndo(self.scene.GetNodes())
 
-    self.currentSlice = Slice('/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/arfi_ts3_26.57.png')
+    self.currentSlice = self.sliceList[0]
 
     # yay, adding images to slicer
     planeSource = vtk.vtkPlaneSource()
@@ -355,9 +363,7 @@ class SliceScrollerLogic:
     vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-  
-    self.imageList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
-
+    
   def setXPosition(self, xpos):
     self.currentSlice.x = xpos
     self.updateScene()
@@ -375,12 +381,6 @@ class SliceScrollerLogic:
     self.currentSlice.yOffset = xVal*self.currentSlice.xAxisVector[1] + yVal*self.currentSlice.yAxisVector[1]
     self.currentSlice.zOffset = xVal*self.currentSlice.xAxisVector[2] + yVal*self.currentSlice.yAxisVector[2]
     self.updateScene()
-
-  #def setYAxisValue(self, yVal):
-  #  self.currentSlice.xOffset = yVal * self.currentSlice.yAxisVector[0]
-  #  self.currentSlice.yOffset = yVal * self.currentSlice.yAxisVector[1]
-  #  self.currentSlice.zOffset = yVal * self.currentSlice.yAxisVector[2]
-  #  self.updateScene()
 
   def setRotationValue(self, angle):
     self.currentSlice.planeRotation = angle
@@ -449,6 +449,7 @@ class SliceScrollerLogic:
     planeSource = vtk.vtkPlaneSource()
     planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
     planeSource.SetNormal(*self.currentSlice.planeNormal)
+
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
     
@@ -489,8 +490,7 @@ class SliceScrollerLogic:
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
 
   def selectSlice(self, index):
-    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
-    self.currentSlice = Slice(imgFilePrefix + str(self.imageList[index]))
+    self.currentSlice = self.sliceList[index]
     self.updateScene()
 
   def hasImageData(self,volumeNode):
