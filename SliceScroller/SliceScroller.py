@@ -109,15 +109,6 @@ class SliceScrollerWidget:
     self.zSlider.value = 0
     self.zSlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Z Position", self.zSlider)
-
-    self.rotationSlider = ctk.ctkSliderWidget()
-    self.rotationSlider.decimals = 1
-    self.rotationSlider.enabled = True
-    self.rotationSlider.maximum = 180
-    self.rotationSlider.minimum = -180
-    self.rotationSlider.value = 0
-    self.rotationSlider.singleStep = 0.1
-    orientationFormLayout.addRow("Plane Rotation", self.rotationSlider)
     
     # plane alignment point input boxes
     self.pointPCoordinateBox = ctk.ctkCoordinatesWidget()
@@ -139,6 +130,33 @@ class SliceScrollerWidget:
     self.pointRCoordinateBox.singleStep = 0.01
     orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
     
+    self.rotationSlider = ctk.ctkSliderWidget()
+    self.rotationSlider.decimals = 1
+    self.rotationSlider.enabled = True
+    self.rotationSlider.maximum = 180
+    self.rotationSlider.minimum = -180
+    self.rotationSlider.value = 0
+    self.rotationSlider.singleStep = 0.1
+    orientationFormLayout.addRow("Plane Rotation", self.rotationSlider)
+
+    self.xAxisSlider = ctk.ctkSliderWidget()  
+    self.xAxisSlider.decimals = 2
+    self.xAxisSlider.enabled = True
+    self.xAxisSlider.maximum = 1
+    self.xAxisSlider.minimum = -1
+    self.xAxisSlider.value = 0
+    self.xAxisSlider.singleStep = 0.01
+    orientationFormLayout.addRow("X-Axis", self.xAxisSlider)
+    
+    self.yAxisSlider = ctk.ctkSliderWidget()  
+    self.yAxisSlider.decimals = 2
+    self.yAxisSlider.enabled = True
+    self.yAxisSlider.maximum = 1
+    self.yAxisSlider.minimum = -1
+    self.yAxisSlider.value = 0
+    self.yAxisSlider.singleStep = 0.01
+    orientationFormLayout.addRow("Y-Axis", self.yAxisSlider)
+
     # image size scaling slider
     self.scalingSlider = ctk.ctkSliderWidget()
     self.scalingSlider.decimals = 0
@@ -157,10 +175,12 @@ class SliceScrollerWidget:
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
-    self.rotationSlider.connect('valueChanged(double)', self.onRotationValueChanged)
     self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
     self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
     self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
+    self.rotationSlider.connect('valueChanged(double)', self.onRotationValueChanged)
+    self.xAxisSlider.connect('valueChanged(double)', self.onXYAxisValueChanged)
+    self.yAxisSlider.connect('valueChanged(double)', self.onXYAxisValueChanged)
     self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
     
     self.logic = SliceScrollerLogic()
@@ -179,9 +199,6 @@ class SliceScrollerWidget:
 
   def onZPositionValueChanged(self, value):
     self.logic.setZPosition(value)
-
-  def onRotationValueChanged(self, value):
-    self.logic.setRotationValue(value)
 
   # For these methods, the actual value doesn't actually matter.
   # It only matters that this function is called when there is a change in coordinates, so 
@@ -206,6 +223,15 @@ class SliceScrollerWidget:
     self.xSlider.value = newCenter[0]
     self.ySlider.value = newCenter[1]
     self.zSlider.value = newCenter[2]
+
+  def onRotationValueChanged(self, value):
+    self.logic.setRotationValue(value)
+
+  def onXYAxisValueChanged(self, value):
+    self.logic.setXYAxisValue(self.xAxisSlider.value, self.yAxisSlider.value)
+  
+  #def onYAxisValueChanged(self, value):
+  #  newCenter = self.logic.setYAxisValue(value)
 
   def onScalingValueChanged(self, value):
     self.logic.setScaling(value)
@@ -330,9 +356,6 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
   
-    #imageListFileName = './imageList.txt'
-    #imageListFileIn = open(imageListFileName, 'r')
-
     self.imageList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
 
   def setXPosition(self, xpos):
@@ -347,6 +370,18 @@ class SliceScrollerLogic:
     self.currentSlice.z = zpos
     self.updateScene()
 
+  def setXYAxisValue(self, xVal, yVal):
+    self.currentSlice.xOffset = xVal*self.currentSlice.xAxisVector[0] + yVal*self.currentSlice.yAxisVector[0]
+    self.currentSlice.yOffset = xVal*self.currentSlice.xAxisVector[1] + yVal*self.currentSlice.yAxisVector[1]
+    self.currentSlice.zOffset = xVal*self.currentSlice.xAxisVector[2] + yVal*self.currentSlice.yAxisVector[2]
+    self.updateScene()
+
+  #def setYAxisValue(self, yVal):
+  #  self.currentSlice.xOffset = yVal * self.currentSlice.yAxisVector[0]
+  #  self.currentSlice.yOffset = yVal * self.currentSlice.yAxisVector[1]
+  #  self.currentSlice.zOffset = yVal * self.currentSlice.yAxisVector[2]
+  #  self.updateScene()
+
   def setRotationValue(self, angle):
     self.currentSlice.planeRotation = angle
     self.updateScene()
@@ -355,6 +390,7 @@ class SliceScrollerLogic:
     self.currentSlice.PCoordinates = coords
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
+    self.currentSlice.updateAxes()
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -362,6 +398,7 @@ class SliceScrollerLogic:
     self.currentSlice.QCoordinates = coords
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
+    self.currentSlice.updateAxes()
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -369,6 +406,7 @@ class SliceScrollerLogic:
     self.currentSlice.RCoordinates = coords
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
+    self.currentSlice.updateAxes()
     self.updateScene()   
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -377,9 +415,6 @@ class SliceScrollerLogic:
     self.updateScene()
     
   def calcAndSetNewImageCenter(self, p):
-    #self.currentSlice.x = p[0]
-    #self.currentSlice.y = p[1]
-    #self.currentSlice.z = p[2]
     # New image center will be set as the point on the plane closest to the origin
     # Let the origin be defined as the point on the plane closest to the center of the 3D Slicer volume
     # http://en.wikipedia.org/wiki/Point_on_plane_closest_to_origin
@@ -417,10 +452,6 @@ class SliceScrollerLogic:
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
     
-    print planeSource.GetPoint1(), planeSource.GetPoint2()
-    #planeSource.SetPoint1(0.5, -0.5, 0)
-    #planeSource.SetPoint2(-0.5, 0.5, 0)
-    
     # model node
     self.model = slicer.vtkMRMLModelNode()
     self.model.SetScene(self.scene)
@@ -447,17 +478,18 @@ class SliceScrollerLogic:
     vTransform = vtk.vtkTransform()
     vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
     
-    #vTransform.Translate(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    vTransform.Translate(self.currentSlice.xOffset, self.currentSlice.yOffset, self.currentSlice.zOffset)
+
     # Rotation, but still on same plane
     vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
     print "The normal to the plane is ", self.currentSlice.planeNormal
 
+    #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
+
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-    
+
   def selectSlice(self, index):
     imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
-    #imgFileSuffix = '.png'
-    #self.currentSlice.name = imgFilePrefix + str(slices[index]) + imgFileSuffix
     self.currentSlice = Slice(imgFilePrefix + str(self.imageList[index]))
     self.updateScene()
 
@@ -555,6 +587,13 @@ class Slice(object):
 
     self.planeNormal = [0, 0, 1]
     self.planeRotation = 0
+
+    self.xAxisVector = [1, 0, 0]
+    self.yAxisVector = [0, 1, 0]
+
+    self.xOffset = 0
+    self.yOffset = 0
+    self.zOffset = 0
   
   def setPosition(self, x, y, z):
     self.x = x
@@ -601,3 +640,25 @@ class Slice(object):
     self.rotationAngle = self.rotationAngle * 180/np.pi # conversion to degrees
     #print "Rotation Angle is now", self.rotationAngle
     #print "Rotation Axis is now", self.rotationAxis
+
+  def updateAxes(self):
+    # Let plane normal be the vector (a, b, c)
+    planeNormal = np.array(self.planeNormal)
+    # Checking to see if (c, c, -a-b) is a valid perpendicular vector
+    if (planeNormal[2] == 0) and (-planeNormal[0]-planeNormal[1] == 0):
+      # (c, c, -a-b) is invalid since it's the zero vector, so choose (-b-c, a, a)
+      self.xAxisVector = np.array([-planeNormal[1]-planeNormal[2], planeNormal[0], planeNormal[0]])
+    else:
+      # (c, c, -a-b) is valid (nonzero), so choose (c, c, -a-b)
+      self.xAxisVector = np.array([planeNormal[2], planeNormal[2], -planeNormal[0]-planeNormal[1]])
+    # y-axis vector must be perpendicular to the plane normal and the newly calculated x-axis vector
+    self.yAxisVector = np.cross(planeNormal, self.xAxisVector)
+
+    # normalizing to unit vectors
+    xAxisLength = np.sqrt(np.dot(self.xAxisVector, self.xAxisVector))
+    yAxisLength = np.sqrt(np.dot(self.yAxisVector, self.yAxisVector))
+    self.xAxisVector = np.divide(self.xAxisVector, xAxisLength)
+    self.yAxisVector = np.divide(self.yAxisVector, yAxisLength)
+
+    print "My x is %f %f %f" % (self.xAxisVector[0], self.xAxisVector[1], self.xAxisVector[2])
+    print "My y is %f %f %f" % (self.yAxisVector[0], self.yAxisVector[1], self.yAxisVector[2]) 
