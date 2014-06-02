@@ -56,12 +56,18 @@ class SliceScrollerWidget:
     reloadFormLayout.addWidget(self.reloadAndTestButton)
     self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
 
+    
     # Slice Scrolling Area
     scrollingCollapsibleButton = ctk.ctkCollapsibleButton()
     scrollingCollapsibleButton.text = "Slice Scrolling"
     self.layout.addWidget(scrollingCollapsibleButton)
     # Layout within the scrolling collapsible button
     scrollingFormLayout = qt.QFormLayout(scrollingCollapsibleButton)
+
+    # directory selection layout
+    self.directorySelectionButton = ctk.ctkDirectoryButton()
+    self.directorySelectionButton.text = "Image Directory"
+    scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
     self.sliceSlider = ctk.ctkSliderWidget()
@@ -174,6 +180,7 @@ class SliceScrollerWidget:
 
     # make connections between valueChanged/coordinatesChanged signals and
     # methods that connect back to the logic.
+    self.directorySelectionButton.connect('directoryChanged(QString)', self.onDirectoryChanged)
     self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
@@ -199,6 +206,9 @@ class SliceScrollerWidget:
 
   # For example, when P, Q, or R coordinates change, the center of the plane changes such that
   # it becomes the point on the plane closest to the origin.
+
+  def onDirectoryChanged(self, value):
+    print self.directorySelectionButton.directory
 
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
