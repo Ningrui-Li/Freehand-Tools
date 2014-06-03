@@ -1,6 +1,7 @@
 import os
 import unittest
 import numpy as np
+import subprocess
 from __main__ import vtk, qt, ctk, slicer
 
 class SliceScroller:
@@ -67,13 +68,14 @@ class SliceScrollerWidget:
     # directory selection layout
     self.directorySelectionButton = ctk.ctkDirectoryButton()
     self.directorySelectionButton.text = "Image Directory"
+    self.directorySelectionButton.directory = "/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/"
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
     self.sliceSlider = ctk.ctkSliderWidget()
     self.sliceSlider.decimals = 0
     self.sliceSlider.enabled = True
-    self.sliceSlider.maximum = 2359
+    #self.sliceSlider.maximum = 2359
     scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
     # orientation sliders
@@ -208,8 +210,13 @@ class SliceScrollerWidget:
   # it becomes the point on the plane closest to the origin.
 
   def onDirectoryChanged(self, value):
-    print self.directorySelectionButton.directory
-
+    p = subprocess.Popen(["ls", "-v", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
+    imageList, error = p.communicate()
+    imageList = imageList.split("\n")
+    imageList.pop() # last element is always empty
+    self.sliceSlider.maximum = len(imageList) - 1
+    print imageList
+    
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
     # returns a Slice object called currentSlice. This is used to
