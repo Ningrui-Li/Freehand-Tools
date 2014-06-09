@@ -247,7 +247,7 @@ class SliceScrollerWidget:
     self.scalingSlider.value = currentSlice.scaling
     
   def onTrackingSystem(self):
-    os.chdir('C:/Program Files/Polhemus/PDI/PDI_90/Samples/PDImfc/Debug/win32/')
+    os.chdir('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/')
     os.system("PDImfcD.exe")
   
   def onXPositionValueChanged(self, value):
