@@ -66,8 +66,8 @@ class SliceScrollerWidget:
 
     # directory selection layout
     self.directorySelectionButton = ctk.ctkDirectoryButton()
-    self.directorySelectionButton.text = "Image Directory"
-    self.directorySelectionButton.directory = "C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
+    self.directorySelectionButton.text = "C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
+    self.directorySelectionButton.directory = self.directorySelectionButton.text
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
@@ -209,6 +209,7 @@ class SliceScrollerWidget:
   # it becomes the point on the plane closest to the origin.
 
   def onDirectoryChanged(self, value):
+    self.directorySelectionButton.text = self.directorySelectionButton.directory
     p = subprocess.Popen(["ls", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
     fileList, error = p.communicate()
     fileList = fileList.split("\n")
@@ -219,8 +220,9 @@ class SliceScrollerWidget:
             imageList.append(file)
     
     self.sliceSlider.maximum = len(imageList)
-    self.logic.loadImages(self.directorySelectionButton.directory + "/", imageList)
     self.sliceSlider.value = 0 
+    
+    self.logic.loadImages(self.directorySelectionButton.directory + "/", imageList)
     
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
