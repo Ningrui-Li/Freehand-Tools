@@ -74,15 +74,19 @@ class SliceScrollerWidget:
     self.sliceSlider = ctk.ctkSliderWidget()
     self.sliceSlider.decimals = 0
     self.sliceSlider.enabled = True
-    #self.sliceSlider.maximum = 2359
     scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
-    # orientation sliders
+    # orientation layout + sliders
     orientationCollapsibleButton = ctk.ctkCollapsibleButton()
     orientationCollapsibleButton.text = "Orientation"
     self.layout.addWidget(orientationCollapsibleButton)
+    
     orientationFormLayout = qt.QFormLayout(orientationCollapsibleButton)
     
+    # Tracking system input button
+    self.trackingSysButton = qt.QPushButton("Read Position")
+    orientationFormLayout.addWidget(self.trackingSysButton)
+
     # size scaling slider
     scalingCollapsibleButton = ctk.ctkCollapsibleButton()
     scalingCollapsibleButton.text = "Image Size Scaling"
@@ -175,14 +179,11 @@ class SliceScrollerWidget:
     self.scalingSlider.value = 150
     scalingFormLayout.addRow("Scaling", self.scalingSlider)
 
-    """self.console = ctk.ctkConsole()
-    scalingFormLayout.addRow("Console", self.console)
-    self.console.update("huehuehue")"""
-
     # make connections between valueChanged/coordinatesChanged signals and
     # methods that connect back to the logic.
     self.directorySelectionButton.connect('directoryChanged(QString)', self.onDirectoryChanged)
     self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
+    self.trackingSysButton.connect('clicked()', self.onTrackingSystem)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
@@ -245,6 +246,10 @@ class SliceScrollerWidget:
     self.yAxisSlider.value = currentSlice.yAxisValue
     self.scalingSlider.value = currentSlice.scaling
     
+  def onTrackingSystem(self):
+    os.chdir('C:/Program Files/Polhemus/PDI/PDI_90/Samples/PDImfc/Debug/win32/')
+    os.system("PDImfcD.exe")
+  
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
 
