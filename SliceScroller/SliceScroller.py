@@ -56,7 +56,6 @@ class SliceScrollerWidget:
     self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
     reloadFormLayout.addWidget(self.reloadAndTestButton)
     self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
-
     
     # Slice Scrolling Area
     scrollingCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -68,7 +67,7 @@ class SliceScrollerWidget:
     # directory selection layout
     self.directorySelectionButton = ctk.ctkDirectoryButton()
     self.directorySelectionButton.text = "Image Directory"
-    self.directorySelectionButton.directory = "/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/"
+    self.directorySelectionButton.directory = "C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
@@ -210,12 +209,18 @@ class SliceScrollerWidget:
   # it becomes the point on the plane closest to the origin.
 
   def onDirectoryChanged(self, value):
-    p = subprocess.Popen(["ls", "-v", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
-    imageList, error = p.communicate()
-    imageList = imageList.split("\n")
-    imageList.pop() # last element is always empty
-    self.sliceSlider.maximum = len(imageList) - 1
-    print imageList
+    p = subprocess.Popen(["ls", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
+    fileList, error = p.communicate()
+    fileList = fileList.split("\n")
+    imageList = []
+    
+    for file in fileList:
+        if file.endswith('.png'):
+            imageList.append(file)
+    
+    self.sliceSlider.maximum = len(imageList)
+    self.logic.loadImages(self.directorySelectionButton.directory + "/", imageList)
+    self.sliceSlider.value = 0 
     
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
@@ -361,12 +366,20 @@ class SliceScrollerLogic:
   requiring an instance of the Widget
   """
   def __init__(self):
-    # Creating list of all image slices
-    sliceNameList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
-    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
-
+    #Creating list of all image slices
+    imgFilePrefix =  'C:\\Users\\Rui\\Dropbox\\Documents\\Documents\\Duke\\Nightingale Lab\\magnetic_tracking\\Freehand-Tools\\SliceScroller\\data\\'
+    p = subprocess.Popen(["ls", imgFilePrefix], stdout = subprocess.PIPE)
+    fileList, error = p.communicate()
+    fileList = fileList.split("\n")
+    
+    imageList = []
+    
+    for file in fileList:
+        if file.endswith('.png'):
+            imageList.append(file)
+      
     self.sliceList = []
-    for name in sliceNameList:
+    for name in imageList:
       self.sliceList.append(Slice(imgFilePrefix + name))
 
     self.scene = slicer.mrmlScene
@@ -411,6 +424,13 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
+  def loadImages(self, imgFilePrefix, imageList):
+    self.sliceList = []
+    for name in imageList:
+      self.sliceList.append(Slice(imgFilePrefix + name))
+    self.currentSlice = self.sliceList[0]
+    self.updateScene()
+  
   def setXPosition(self, xpos):
     self.currentSlice.x = xpos
     self.updateScene()
