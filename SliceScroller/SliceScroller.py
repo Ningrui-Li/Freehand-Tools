@@ -249,7 +249,24 @@ class SliceScrollerWidget:
   def onTrackingSystem(self):
     os.chdir('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/')
     os.system("PDImfcD.exe")
-  
+    positionFile = open('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/test.txt', 'r')
+    positions = positionFile.read().split()
+    Rcoords = positions[-6:-3]
+    Qcoords = positions[-12:-9]
+    Pcoords = positions[-18:-15]
+    
+    self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
+    self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
+    self.pointRCoordinateBox.coordinates = ','.join(str(coord) for coord in Rcoords)
+    
+    self.logic.setPCoords(Pcoords)
+    self.logic.setQCoords(Qcoords)
+    newCenter = self.logic.setRCoords(Rcoords)
+    
+    self.xSlider.value = newCenter[0]
+    self.ySlider.value = newCenter[1]
+    self.zSlider.value = newCenter[2]
+    
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
 
