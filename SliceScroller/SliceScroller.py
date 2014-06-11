@@ -247,10 +247,11 @@ class SliceScrollerWidget:
     self.scalingSlider.value = currentSlice.scaling
     
   def onTrackingSystem(self):
-    posTrackDirectory = 'C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/PDIconsole/Release/win32/'
+    posTrackDirectory = os.path.dirname(os.path.realpath(__file__))
     os.chdir(posTrackDirectory)
     os.system("PDIconsole.exe")
     positionFile = open(posTrackDirectory + 'test.txt', 'r')
+    positionFile = open('test.txt', 'r')
     positions = [float(x) for x in positionFile.read().split()]
     numReadings = 10;
     
