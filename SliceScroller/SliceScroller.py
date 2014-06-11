@@ -247,13 +247,35 @@ class SliceScrollerWidget:
     self.scalingSlider.value = currentSlice.scaling
     
   def onTrackingSystem(self):
-    os.chdir('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/')
-    os.system("PDImfcD.exe")
-    positionFile = open('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/test.txt', 'r')
-    positions = positionFile.read().split()
-    Rcoords = positions[-6:-3]
-    Qcoords = positions[-12:-9]
-    Pcoords = positions[-18:-15]
+    posTrackDirectory = 'C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/PDIconsole/Release/win32/'
+    os.chdir(posTrackDirectory)
+    os.system("PDIconsole.exe")
+    positionFile = open(posTrackDirectory + 'test.txt', 'r')
+    positions = [float(x) for x in positionFile.read().split()]
+    numReadings = 10;
+    
+    """originCoords = []
+    Pcoords = []
+    Qcoords = []
+    Rcoords = []
+    for i in range(0, numReadings*4 + 1)"""
+    
+    originCoords = [np.mean(positions[0:numReadings*6:6]), np.mean(positions[1:(numReadings*6 + 1):6]), np.mean(positions[2:(numReadings*6 + 2):6])]
+    
+    Pcoords = [np.mean(positions[6*numReadings:2*6*numReadings:6]), np.mean(positions[6*numReadings + 1:(2*6*numReadings + 1):6]), np.mean(positions[6*numReadings + 2:2*6*numReadings + 2:6])]
+    Qcoords = [np.mean(positions[2*6*numReadings:3*6*numReadings:6]), np.mean(positions[2*6*numReadings + 1:3*6*numReadings + 1:6]), np.mean(positions[2*6*numReadings + 2:3*6*numReadings + 2:6])]
+    Rcoords = [np.mean(positions[3*6*numReadings:4*6*numReadings:6]), np.mean(positions[3*6*numReadings + 1:4*6*numReadings + 1:6]), np.mean(positions[3*6*numReadings + 2:4*6*numReadings + 2:6])]
+    
+    # getting P,Q,R coordinates relative to the origin
+    
+    print originCoords
+    print Pcoords
+    print Qcoords
+    print Rcoords
+    
+    Pcoords = np.subtract(Pcoords, originCoords)
+    Qcoords = np.subtract(Qcoords, originCoords)
+    Rcoords = np.subtract(Rcoords, originCoords)
     
     self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
     self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
