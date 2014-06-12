@@ -1,8 +1,12 @@
 import os
+from inspect import getsourcefile
+from os.path import abspath 
 import unittest
 import numpy as np
 import subprocess
+import module_locator
 from __main__ import vtk, qt, ctk, slicer
+
 
 class SliceScroller:
   def __init__(self, parent):
@@ -203,7 +207,7 @@ class SliceScrollerWidget:
     self.layout.addStretch(1)
 
   # The following methods are called when a slider/coordinate value changes.
-  # Slider values and coordinates and passed down, and occassionally, results are
+  # Slider values and coordinates and passed down, and occasionally, results are
   # returned so as to update the slider values.
 
   # For example, when P, Q, or R coordinates change, the center of the plane changes such that
@@ -247,7 +251,8 @@ class SliceScrollerWidget:
     self.scalingSlider.value = currentSlice.scaling
     
   def onTrackingSystem(self):
-    posTrackDirectory = os.path.dirname(os.path.realpath(__file__))
+    posTrackDirectory = abspath(getsourcefile(lambda _: None))
+    posTrackDirectory = posTrackDirectory.replace("SliceScroller.py", "")
     os.chdir(posTrackDirectory)
     os.system("PDIconsole.exe")
     positionFile = open(posTrackDirectory + 'test.txt', 'r')
