@@ -256,32 +256,53 @@ class SliceScrollerWidget:
     os.chdir(posTrackDirectory)
     os.system("PDIconsole.exe")
     positionFile = open(posTrackDirectory + 'test.txt', 'r')
-    positionFile = open('test.txt', 'r')
-    positions = [float(x) for x in positionFile.read().split()]
-    numReadings = 10;
+
+    positionFile.readline()
+    nextLine = positionFile.readline()
+    measurementCounter = 0
+    origin = [0, 0, 0]
+    while not (nextLine.startswith("Reading")):
+        reading = [float(x) for x in nextLine.split()]
+        origin = np.add(origin, reading[0:3])
+        nextLine = positionFile.readline()
+        measurementCounter += 1
+    origin = np.divide(origin, measurementCounter)
+
+    nextLine = positionFile.readline()
+    measurementCounter = 0
+    Pcoords = [0, 0, 0]
+    while not (nextLine.startswith("Reading")):
+        reading = [float(x) for x in nextLine.split()]
+        Pcoords = np.add(Pcoords, reading[0:3])
+        nextLine = positionFile.readline()
+        measurementCounter += 1
+    Pcoords = np.divide(Pcoords, measurementCounter)
+
+    nextLine = positionFile.readline()
+    measurementCounter = 0
+    Qcoords = [0, 0, 0]
+    while not (nextLine.startswith("Reading")):
+        reading = [float(x) for x in nextLine.split()]
+        Qcoords = np.add(Qcoords, reading[0:3])
+        nextLine = positionFile.readline()
+        measurementCounter += 1
+    Qcoords = np.divide(Qcoords, measurementCounter)
+
+    nextLine = positionFile.readline()
+    measurementCounter = 0
+    Rcoords = [0, 0, 0]
+    while (nextLine):
+        reading = [float(x) for x in nextLine.split()]
+        Rcoords = np.add(Rcoords, reading[0:3])
+        nextLine = positionFile.readline()
+        measurementCounter += 1
+    Rcoords = np.divide(Rcoords, measurementCounter)
+
+    positionFile.close()
     
-    """originCoords = []
-    Pcoords = []
-    Qcoords = []
-    Rcoords = []
-    for i in range(0, numReadings*4 + 1)"""
-    
-    originCoords = [np.mean(positions[0:numReadings*6:6]), np.mean(positions[1:(numReadings*6 + 1):6]), np.mean(positions[2:(numReadings*6 + 2):6])]
-    
-    Pcoords = [np.mean(positions[6*numReadings:2*6*numReadings:6]), np.mean(positions[6*numReadings + 1:(2*6*numReadings + 1):6]), np.mean(positions[6*numReadings + 2:2*6*numReadings + 2:6])]
-    Qcoords = [np.mean(positions[2*6*numReadings:3*6*numReadings:6]), np.mean(positions[2*6*numReadings + 1:3*6*numReadings + 1:6]), np.mean(positions[2*6*numReadings + 2:3*6*numReadings + 2:6])]
-    Rcoords = [np.mean(positions[3*6*numReadings:4*6*numReadings:6]), np.mean(positions[3*6*numReadings + 1:4*6*numReadings + 1:6]), np.mean(positions[3*6*numReadings + 2:4*6*numReadings + 2:6])]
-    
-    # getting P,Q,R coordinates relative to the origin
-    
-    print originCoords
-    print Pcoords
-    print Qcoords
-    print Rcoords
-    
-    Pcoords = np.subtract(Pcoords, originCoords)
-    Qcoords = np.subtract(Qcoords, originCoords)
-    Rcoords = np.subtract(Rcoords, originCoords)
+    Pcoords = np.subtract(Pcoords, origin)
+    Qcoords = np.subtract(Qcoords, origin)
+    Rcoords = np.subtract(Rcoords, origin)
     
     self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
     self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
