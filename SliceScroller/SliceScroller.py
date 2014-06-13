@@ -91,9 +91,9 @@ class SliceScrollerWidget:
     self.trackingSysButton = qt.QPushButton("Read Position")
     orientationFormLayout.addWidget(self.trackingSysButton)
 
-    # size scaling slider
+    # radius scaling slider
     scalingCollapsibleButton = ctk.ctkCollapsibleButton()
-    scalingCollapsibleButton.text = "Image Size Scaling"
+    scalingCollapsibleButton.text = "Sphere Radius Scaling"
     self.layout.addWidget(scalingCollapsibleButton)
     scalingFormLayout = qt.QFormLayout(scalingCollapsibleButton)
 
@@ -174,14 +174,15 @@ class SliceScrollerWidget:
     self.yAxisSlider.singleStep = 0.01
     orientationFormLayout.addRow("Y-Axis", self.yAxisSlider)
 
-    # image size scaling slider
+    # sphere size radius slider
     self.scalingSlider = ctk.ctkSliderWidget()
     self.scalingSlider.decimals = 0
     self.scalingSlider.enabled = True
-    self.scalingSlider.maximum = 300
+    self.scalingSlider.maximum = 0.5
     self.scalingSlider.minimum = 0
-    self.scalingSlider.value = 150
-    scalingFormLayout.addRow("Scaling", self.scalingSlider)
+    self.scalingSlider.singleStep = 0.01
+    self.scalingSlider.value = 0.05
+    scalingFormLayout.addRow("Radius", self.scalingSlider)
 
     # make connections between valueChanged/coordinatesChanged signals and
     # methods that connect back to the logic.
@@ -248,7 +249,7 @@ class SliceScrollerWidget:
     self.rotationSlider.value = currentSlice.planeRotation
     self.xAxisSlider.value = currentSlice.xAxisValue
     self.yAxisSlider.value = currentSlice.yAxisValue
-    self.scalingSlider.value = currentSlice.scaling
+    self.scalingSlider.value = currentSlice.radius
     
   def onTrackingSystem(self):
     posTrackDirectory = abspath(getsourcefile(lambda _: None))
@@ -462,16 +463,17 @@ class SliceScrollerLogic:
     self.currentSlice = self.sliceList[0]
 
     # yay, adding images to slicer
-    planeSource = vtk.vtkPlaneSource()
-    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-    reader = vtk.vtkPNGReader()
-    reader.SetFileName(self.currentSlice.name)
+    sphereSource = vtk.vtkSphereSource()
+    sphereSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    sphereSource.SetRadius(.05)
+    #reader = vtk.vtkPNGReader()
+    #reader.SetFileName(self.currentSlice.name)
 
     # model node
     self.model = slicer.vtkMRMLModelNode()
     self.model.SetScene(self.scene)
     self.model.SetName(self.currentSlice.name)
-    self.model.SetAndObservePolyData(planeSource.GetOutput())
+    self.model.SetAndObservePolyData(sphereSource.GetOutput())
 
     # model display node
     self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
@@ -483,7 +485,7 @@ class SliceScrollerLogic:
     self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
 
     # adding png file as texture to modelDisplay
-    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    #self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
     self.scene.AddNode(self.model)
 
     # now doing a linear transform to set coordinates and orientation of plane
@@ -493,8 +495,6 @@ class SliceScrollerLogic:
     vTransform = vtk.vtkTransform()
     vTransform.Scale(150, 150, 150)
     
-    #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
-
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
   def loadImages(self, imgFilePrefix, imageList):
@@ -564,8 +564,8 @@ class SliceScrollerLogic:
     self.updateScene()   
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
-  def setScaling(self, scaling):
-    self.currentSlice.scaling = scaling
+  def setScaling(self, radius):
+    self.currentSlice.radius = radius
     self.updateScene()
     
   def calcAndSetNewImageCenter(self, p):
@@ -601,18 +601,18 @@ class SliceScrollerLogic:
     self.scene.RemoveNode(self.model)
 
     # Creating new nodes that represent the slice to be added in.
-    planeSource = vtk.vtkPlaneSource()
-    planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-    planeSource.SetNormal(*self.currentSlice.planeNormal)
-
-    reader = vtk.vtkPNGReader()
-    reader.SetFileName(self.currentSlice.name)
+    sphereSource = vtk.vtkSphereSource()
+    sphereSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
+    sphereSource.SetRadius(self.currentSlice.radius)
+    
+    #reader = vtk.vtkPNGReader()
+    #reader.SetFileName(self.currentSlice.name)
     
     # model node
     self.model = slicer.vtkMRMLModelNode()
     self.model.SetScene(self.scene)
     self.model.SetName(self.currentSlice.name)
-    self.model.SetAndObservePolyData(planeSource.GetOutput())
+    self.model.SetAndObservePolyData(sphereSource.GetOutput())
 
     # model display node
     self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
@@ -624,7 +624,7 @@ class SliceScrollerLogic:
     self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
 
     # setting image file as texture to modelDisplay
-    self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
+    #self.modelDisplay.SetAndObserveTextureImageData(reader.GetOutput())
     self.scene.AddNode(self.model)
 
     # now doing a linear transform to set coordinates and orientation of plane
@@ -632,12 +632,12 @@ class SliceScrollerLogic:
     self.scene.AddNode(self.transform)
     self.model.SetAndObserveTransformNodeID(self.transform.GetID())
     vTransform = vtk.vtkTransform()
-    vTransform.Scale(self.currentSlice.scaling, self.currentSlice.scaling, self.currentSlice.scaling)
+    vTransform.Scale(150, 150, 150)
     
-    vTransform.Translate(self.currentSlice.xOffset, self.currentSlice.yOffset, self.currentSlice.zOffset)
+    #vTransform.Translate(self.currentSlice.xOffset, self.currentSlice.yOffset, self.currentSlice.zOffset)
 
     # Rotation, but still on same plane
-    vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
+    #vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
     #print "The normal to the plane is ", self.currentSlice.planeNormal
     #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
@@ -754,7 +754,7 @@ class Slice(object):
       self.name = name
     
     # image size scaling factor
-    self.scaling = 150
+    self.radius = 0.05
 
     # self.rotationAxis = [0, 0, 0]
     # self.rotationAngle = 0
@@ -803,8 +803,8 @@ class Slice(object):
     self.zAngle = xyzAng[2]
     """
 
-  def setScaling(self, scaling):
-    self.scaling = scaling
+  def setRadius(self, radius):
+    self.radius = radius
 
   def updateRotation(self):
     # This function is called when the coordinates of any of the three points
