@@ -124,55 +124,6 @@ class SliceScrollerWidget:
     self.zSlider.value = 0
     self.zSlider.singleStep = 0.01
     orientationFormLayout.addRow("Center - Z Position", self.zSlider)
-    
-    # plane alignment point input boxes
-    self.pointPCoordinateBox = ctk.ctkCoordinatesWidget()
-    self.pointPCoordinateBox.dimension = 3
-    self.pointPCoordinateBox.decimals = 2
-    self.pointPCoordinateBox.singleStep = 0.01
-    self.pointPCoordinateBox.enabled = True
-    orientationFormLayout.addRow("Point P Coordinates", self.pointPCoordinateBox)
-
-    self.pointQCoordinateBox = ctk.ctkCoordinatesWidget()
-    self.pointQCoordinateBox.dimension = 3
-    self.pointQCoordinateBox.decimals = 2
-    self.pointQCoordinateBox.singleStep = 0.01
-    orientationFormLayout.addRow("Point Q Coordinates", self.pointQCoordinateBox)
-
-    self.pointRCoordinateBox = ctk.ctkCoordinatesWidget()
-    self.pointRCoordinateBox.dimension = 3
-    self.pointRCoordinateBox.decimals = 2  
-    self.pointRCoordinateBox.singleStep = 0.01
-    orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
-    
-    # plane rotation slider
-    self.rotationSlider = ctk.ctkSliderWidget()
-    self.rotationSlider.decimals = 1
-    self.rotationSlider.enabled = True
-    self.rotationSlider.maximum = 180
-    self.rotationSlider.minimum = -180
-    self.rotationSlider.value = 0
-    self.rotationSlider.singleStep = 0.1
-    orientationFormLayout.addRow("Plane Rotation", self.rotationSlider)
-
-    # "x-axis" and "y-axis" sliders
-    self.xAxisSlider = ctk.ctkSliderWidget()  
-    self.xAxisSlider.decimals = 2
-    self.xAxisSlider.enabled = True
-    self.xAxisSlider.maximum = 1
-    self.xAxisSlider.minimum = -1
-    self.xAxisSlider.value = 0
-    self.xAxisSlider.singleStep = 0.01
-    orientationFormLayout.addRow("X-Axis", self.xAxisSlider)
-    
-    self.yAxisSlider = ctk.ctkSliderWidget()  
-    self.yAxisSlider.decimals = 2
-    self.yAxisSlider.enabled = True
-    self.yAxisSlider.maximum = 1
-    self.yAxisSlider.minimum = -1
-    self.yAxisSlider.value = 0
-    self.yAxisSlider.singleStep = 0.01
-    orientationFormLayout.addRow("Y-Axis", self.yAxisSlider)
 
     # sphere size radius slider
     self.scalingSlider = ctk.ctkSliderWidget()
@@ -192,12 +143,7 @@ class SliceScrollerWidget:
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
-    self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
-    self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
-    self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
-    self.rotationSlider.connect('valueChanged(double)', self.onRotationValueChanged)
-    self.xAxisSlider.connect('valueChanged(double)', self.onXAxisValueChanged)
-    self.yAxisSlider.connect('valueChanged(double)', self.onYAxisValueChanged)
+   
     self.scalingSlider.connect('valueChanged(double)', self.onScalingValueChanged)
     
     # declare logic variable that updates image plane properties based on values passed
@@ -657,84 +603,6 @@ class SliceScrollerLogic:
     self.updateScene()
     return self.currentSlice
 
-  # Code that was included in the template. Not used.
-"""
-  def hasImageData(self,volumeNode):
-    """"""This is a dummy logic method that 
-    returns true if the passed in volume
-    node has valid image data""""""
-    if not volumeNode:
-      print('no volume node')
-      return False
-    if volumeNode.GetImageData() == None:
-      print('no image data')
-      return False
-    return True
-
-  def delayDisplay(self,message,msec=1000):
-    #
-    # logic version of delay display
-    #
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
-
-  def takeScreenshot(self,name,description,type=-1):
-    # show the message even if not taking a screen shot
-    self.delayDisplay(description)
-
-    if self.enableScreenshots == 0:
-      return
-
-    lm = slicer.app.layoutManager()
-    # switch on the type to get the requested window
-    widget = 0
-    if type == -1:
-      # full window
-      widget = slicer.util.mainWindow()
-    elif type == slicer.qMRMLScreenShotDialog().FullLayout:
-      # full layout
-      widget = lm.viewport()
-    elif type == slicer.qMRMLScreenShotDialog().ThreeD:
-      # just the 3D window
-      widget = lm.threeDWidget(0).threeDView()
-    elif type == slicer.qMRMLScreenShotDialog().Red:
-      # red slice window
-      widget = lm.sliceWidget("Red")
-    elif type == slicer.qMRMLScreenShotDialog().Yellow:
-      # yellow slice window
-      widget = lm.sliceWidget("Yellow")
-    elif type == slicer.qMRMLScreenShotDialog().Green:
-      # green slice window
-      widget = lm.sliceWidget("Green")
-
-    # grab and convert to vtk image data
-    qpixMap = qt.QPixmap().grabWidget(widget)
-    qimage = qpixMap.toImage()
-    imageData = vtk.vtkImageData()
-    slicer.qMRMLUtils().qImageToVtkImageData(qimage,imageData)
-
-    annotationLogic = slicer.modules.annotations.logic()
-    annotationLogic.CreateSnapShot(name, description, type, self.screenshotScaleFactor, imageData)
-
-  def run(self,inputVolume,outputVolume,enableScreenshots=0,screenshotScaleFactor=1):
-    """"""Run the actual algorithm""""""
-
-    self.delayDisplay('Running the algorithm')
-
-    self.enableScreenshots = enableScreenshots
-    self.screenshotScaleFactor = screenshotScaleFactor
-
-    self.takeScreenshot('VolumeScroller-Start','Start',-1)
-
-    return True
-"""
-
 class Slice(object):
   def __init__(self, name=None):
     # x, y, and z coordinates for the point on plane closest to the origin
@@ -763,24 +631,6 @@ class Slice(object):
     self.planeNormal = [0, 0, 1]
     # degree of rotation of the plane around its normal
     self.planeRotation = 0
-
-    # when the image is rotated in space and aligned on a new plane,
-    # it is beneficial to be able to translate it around while still having
-    # it bound to its alignment plane.
-    # these vectors give directions for moving the image plane
-    # along the newly-defined "x-axis" and "y-axis".
-    self.xAxisVector = [1, 0, 0]
-    self.yAxisVector = [0, 1, 0]
-
-    # These are offset values for the image from the point on
-    # the plane closest to the origin.
-    # Offsets of all zero mean that the image plane is centered
-    # on the point on the plane closest to the origin.
-    self.xAxisValue = 0
-    self.yAxisValue = 0
-    self.xOffset = 0
-    self.yOffset = 0
-    self.zOffset = 0
   
   def setPosition(self, x, y, z):
     self.x = x
@@ -792,67 +642,5 @@ class Slice(object):
     self.y = xyz[1]
     self.z = xyz[2]
 
-  """def setAngles(self, xAng, yAng, zAng):
-    self.xAngle = xAng
-    self.yAngle = yAng
-    self.zAngle = zAng
-
-  def setAngles(self, xyzAng):
-    self.xAngle = xyzAng[0]
-    self.yAngle = xyzAng[1]
-    self.zAngle = xyzAng[2]
-    """
-
   def setRadius(self, radius):
     self.radius = radius
-
-  def updateRotation(self):
-    # This function is called when the coordinates of any of the three points
-    # P, Q, or R change. Changing any of the three points means that a new
-    # plane normal will have to be calculated for the slice. This is done
-    # by taking the cross product of any two direction vectors constructed using
-    # P, Q, or R.
-    p = np.array(self.PCoordinates)
-    q = np.array(self.QCoordinates)
-    r = np.array(self.RCoordinates)
-    # calculating direction vectors PQ and PR, then taking their cross product
-    # to acquire normal to the newly defined plane 
-    pq = np.subtract(q, p)
-    pr = np.subtract(r, p)
-    self.planeNormal = np.cross(pq, pr)
-    #print self.planeNormal
-
-    # take cross product of normal of user-defined plane and 
-    # default plane (0 0 1) to get axis of rotation
-    #originalNormal = np.array([0, 0, 1])
-    #self.rotationAxis = np.cross(self.planeNormal, originalNormal)
-
-    # now use dot product definition to calculate angle of rotation
-    # dot product: A (dot) B = |A|*|B|*cos(angle)
-    #newPlaneNormalLength = np.sqrt(self.planeNormal[0]**2 + self.planeNormal[1]**2 + self.planeNormal[2]**2
-    #self.rotationAngle = np.arccos(np.dot(self.planeNormal, originalNormal) / newPlaneNormalLength) # in radians
-    #self.rotationAngle = self.rotationAngle * 180/np.pi # conversion to degrees
-    #print "Rotation Angle is now", self.rotationAngle
-    #print "Rotation Axis is now", self.rotationAxis
-
-  def updateAxes(self):
-    # Let plane normal be the vector (a, b, c)
-    planeNormal = np.array(self.planeNormal)
-    # Checking to see if (c, c, -a-b) is a valid perpendicular vector
-    if (planeNormal[2] == 0) and (-planeNormal[0]-planeNormal[1] == 0):
-      # (c, c, -a-b) is invalid since it's the zero vector, so choose (-b-c, a, a)
-      self.xAxisVector = np.array([-planeNormal[1]-planeNormal[2], planeNormal[0], planeNormal[0]])
-    else:
-      # (c, c, -a-b) is valid (nonzero), so choose (c, c, -a-b)
-      self.xAxisVector = np.array([planeNormal[2], planeNormal[2], -planeNormal[0]-planeNormal[1]])
-    # y-axis vector must be perpendicular to the plane normal and the newly calculated x-axis vector
-    self.yAxisVector = np.cross(planeNormal, self.xAxisVector)
-
-    # normalizing to unit vectors
-    xAxisLength = np.sqrt(np.dot(self.xAxisVector, self.xAxisVector))
-    yAxisLength = np.sqrt(np.dot(self.yAxisVector, self.yAxisVector))
-    self.xAxisVector = np.divide(self.xAxisVector, xAxisLength)
-    self.yAxisVector = np.divide(self.yAxisVector, yAxisLength)
-
-    print "My x is %f %f %f" % (self.xAxisVector[0], self.xAxisVector[1], self.xAxisVector[2])
-    print "My y is %f %f %f" % (self.yAxisVector[0], self.yAxisVector[1], self.yAxisVector[2]) 
