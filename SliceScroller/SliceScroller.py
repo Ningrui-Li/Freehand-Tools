@@ -411,7 +411,7 @@ class SliceScrollerLogic:
     # yay, adding images to slicer
     sphereSource = vtk.vtkSphereSource()
     sphereSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-    sphereSource.SetRadius(.05)
+    sphereSource.SetRadius(0.05)
     #reader = vtk.vtkPNGReader()
     #reader.SetFileName(self.currentSlice.name)
 
@@ -443,6 +443,12 @@ class SliceScrollerLogic:
     
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
+    spheres = []
+    spheres.append(Sphere(.2, .5, .4))
+    spheres.append(Sphere(.2, .2, .1))
+    spheres.append(Sphere(.1, .1, .6))
+    spheres[0].remove()
+  
   def loadImages(self, imgFilePrefix, imageList):
     self.sliceList = []
     for name in imageList:
@@ -622,7 +628,7 @@ class Slice(object):
       self.name = name
     
     # image size scaling factor
-    self.radius = 0.05
+    self.radius =150
 
     # self.rotationAxis = [0, 0, 0]
     # self.rotationAngle = 0
@@ -644,3 +650,44 @@ class Slice(object):
 
   def setRadius(self, radius):
     self.radius = radius
+
+class Sphere(object):
+    def __init__(self, x, y, z): 
+        self.scene = slicer.mrmlScene
+        self.x = x
+        self.y = y
+        self.z = z
+        
+        # Creating new nodes that represent the slice to be added in.
+        self.source = vtk.vtkSphereSource()
+        self.source.SetCenter(self.x, self.y, self.z)
+        self.source.SetRadius(0.05)
+        
+        # model node
+        self.model = slicer.vtkMRMLModelNode()
+        self.model.SetScene(self.scene)
+        self.model.SetAndObservePolyData(self.source.GetOutput())
+
+        # model display node
+        self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
+        self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+        self.modelDisplay.SetScene(self.scene)
+        self.scene.AddNode(self.modelDisplay)
+
+        # connecting model node w/ its model display node
+        self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
+        self.scene.AddNode(self.model)
+
+        # now doing a linear transform to set coordinates and orientation of plane
+        self.transform = slicer.vtkMRMLLinearTransformNode()
+        self.scene.AddNode(self.transform)
+        self.model.SetAndObserveTransformNodeID(self.transform.GetID())
+        vTransform = vtk.vtkTransform()
+        vTransform.Scale(150, 150, 150)
+
+        self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+        
+    def remove(self):
+        self.scene.RemoveNode(self.transform)
+        self.scene.RemoveNode(self.modelDisplay)
+        self.scene.RemoveNode(self.model)
