@@ -497,6 +497,8 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
+    self.spheres = []
+    
   def loadImages(self, imgFilePrefix, imageList):
     self.sliceList = []
     for name in imageList:
@@ -589,7 +591,7 @@ class SliceScrollerLogic:
       newCenterX = p[0]
       newCenterY = p[1]
       newCenterZ = p[2]
-    print "The new center is: ", newCenterX, newCenterY, newCenterZ
+    #print "The new center is: ", newCenterX, newCenterY, newCenterZ
     self.currentSlice.x = newCenterX
     self.currentSlice.y = newCenterY
     self.currentSlice.z = newCenterZ
@@ -642,7 +644,18 @@ class SliceScrollerLogic:
     #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-
+    self.updateSpheres()
+    
+  def updateSpheres(self):
+    # first remove old spheres
+    for sphere in self.spheres:
+        sphere.remove()
+    # now put in new spheres based on P, Q, R coordinates
+    del self.spheres[:]
+    self.spheres.append(Sphere(*self.currentSlice.PCoordinates))
+    self.spheres.append(Sphere(*self.currentSlice.QCoordinates))
+    self.spheres.append(Sphere(*self.currentSlice.RCoordinates))
+    
   def selectSlice(self, index):
     # This method is called when the slice index slider is changed.
     # The slice currently present in the scene is removed, and the slice located
@@ -650,9 +663,9 @@ class SliceScrollerLogic:
     # Positional information about the newly loaded slice is returned back
     # to the GUI so that slider values can be updated to match the slice that is
     # currently shown in the scene.
-    print self.currentSlice.xAxisValue, self.currentSlice.yAxisValue
+    #print self.currentSlice.xAxisValue, self.currentSlice.yAxisValue
     self.currentSlice = self.sliceList[index]
-    print self.currentSlice.xAxisValue, self.currentSlice.yAxisValue
+    #print self.currentSlice.xAxisValue, self.currentSlice.yAxisValue
 
     self.updateScene()
     return self.currentSlice
@@ -854,5 +867,47 @@ class Slice(object):
     self.xAxisVector = np.divide(self.xAxisVector, xAxisLength)
     self.yAxisVector = np.divide(self.yAxisVector, yAxisLength)
 
-    print "My x is %f %f %f" % (self.xAxisVector[0], self.xAxisVector[1], self.xAxisVector[2])
-    print "My y is %f %f %f" % (self.yAxisVector[0], self.yAxisVector[1], self.yAxisVector[2]) 
+    #print "My x is %f %f %f" % (self.xAxisVector[0], self.xAxisVector[1], self.xAxisVector[2])
+    #print "My y is %f %f %f" % (self.yAxisVector[0], self.yAxisVector[1], self.yAxisVector[2]) 
+    
+class Sphere(object):
+    def __init__(self, x, y, z): 
+        self.scene = slicer.mrmlScene
+        self.x = x
+        self.y = y
+        self.z = z
+        
+        # Creating new nodes that represent the slice to be added in.
+        self.source = vtk.vtkSphereSource()
+        self.source.SetCenter(self.x, self.y, self.z)
+        self.source.SetRadius(0.05)
+        
+        # model node
+        self.model = slicer.vtkMRMLModelNode()
+        self.model.SetScene(self.scene)
+        self.model.SetAndObservePolyData(self.source.GetOutput())
+
+        # model display node
+        self.modelDisplay = slicer.vtkMRMLModelDisplayNode()
+        self.modelDisplay.BackfaceCullingOff() # so plane can be seen from both front and back face
+        self.modelDisplay.SetScene(self.scene)
+        self.scene.AddNode(self.modelDisplay)
+
+        # connecting model node w/ its model display node
+        self.model.SetAndObserveDisplayNodeID(self.modelDisplay.GetID())
+        self.scene.AddNode(self.model)
+
+        # now doing a linear transform to set coordinates and orientation of plane
+        self.transform = slicer.vtkMRMLLinearTransformNode()
+        self.scene.AddNode(self.transform)
+        self.model.SetAndObserveTransformNodeID(self.transform.GetID())
+        vTransform = vtk.vtkTransform()
+        vTransform.Scale(150, 150, 150)
+
+        self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
+        
+    def remove(self):
+        self.scene.RemoveNode(self.transform)
+        self.scene.RemoveNode(self.modelDisplay)
+        self.scene.RemoveNode(self.model)
+
