@@ -145,6 +145,10 @@ class SliceScrollerWidget:
     self.pointRCoordinateBox.singleStep = 0.01
     orientationFormLayout.addRow("Point R Coordinates", self.pointRCoordinateBox)
     
+    # toggle coordinate spheres appearing in scene
+    self.sphereVisibleButton = qt.QPushButton("Toggle Coordinate Visibility")
+    orientationFormLayout.addWidget(self.sphereVisibleButton)
+    
     # plane rotation slider
     self.rotationSlider = ctk.ctkSliderWidget()
     self.rotationSlider.decimals = 1
@@ -194,6 +198,7 @@ class SliceScrollerWidget:
     self.pointPCoordinateBox.connect('coordinatesChanged(double*)', self.onPCoordinatesChanged)    
     self.pointQCoordinateBox.connect('coordinatesChanged(double*)', self.onQCoordinatesChanged)    
     self.pointRCoordinateBox.connect('coordinatesChanged(double*)', self.onRCoordinatesChanged)    
+    self.sphereVisibleButton.connect('clicked()', self.onSphereVisibleChanged)
     self.rotationSlider.connect('valueChanged(double)', self.onRotationValueChanged)
     self.xAxisSlider.connect('valueChanged(double)', self.onXAxisValueChanged)
     self.yAxisSlider.connect('valueChanged(double)', self.onYAxisValueChanged)
@@ -250,6 +255,7 @@ class SliceScrollerWidget:
     self.yAxisSlider.value = currentSlice.yAxisValue
     self.scalingSlider.value = currentSlice.scaling
     
+  # needs to be cleaner
   def onTrackingSystem(self):
     posTrackDirectory = abspath(getsourcefile(lambda _: None))
     posTrackDirectory = posTrackDirectory.replace("SliceScroller.py", "")
@@ -349,6 +355,9 @@ class SliceScrollerWidget:
     self.ySlider.value = newCenter[1]
     self.zSlider.value = newCenter[2]
 
+  def onSphereVisibleChanged(self):
+    self.logic.toggleSpheresVisible()
+    
   def onRotationValueChanged(self, value):
     self.logic.setRotationValue(value)
 
@@ -497,7 +506,8 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
-    self.spheres = []
+    self.spheres = [Sphere(0, 0, 0), Sphere(0, 0, 0), Sphere(0, 0, 0)]
+    self.spheresVisible = False
     
   def loadImages(self, imgFilePrefix, imageList):
     self.sliceList = []
@@ -531,8 +541,7 @@ class SliceScrollerLogic:
   def setYAxisValue(self, yVal):
     # xVal and yVal must be saved in order to update slider interface when switching between image slices                                                  
     self.currentSlice.yAxisValue = yVal
-    xVal = self.currentSlice.xAxisValue
-                                   
+    xVal = self.currentSlice.xAxisValue         
     self.currentSlice.xOffset = xVal*self.currentSlice.xAxisVector[0] + yVal*self.currentSlice.yAxisVector[0]
     self.currentSlice.yOffset = xVal*self.currentSlice.xAxisVector[1] + yVal*self.currentSlice.yAxisVector[1]
     self.currentSlice.zOffset = xVal*self.currentSlice.xAxisVector[2] + yVal*self.currentSlice.yAxisVector[2]
@@ -547,6 +556,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
+    self.spheres[0] = Sphere(*coords)
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -555,6 +565,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
+    self.spheres[1] = Sphere(*coords)
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -563,6 +574,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
+    self.spheres[2] = Sphere(*coords)
     self.updateScene()   
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -644,8 +656,18 @@ class SliceScrollerLogic:
     #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-    self.updateSpheres()
+    if self.spheresVisible:
+        self.updateSpheres()
     
+  def toggleSpheresVisible(self):
+    if self.spheresVisible:
+        for sphere in self.spheres:
+            sphere.remove()
+        self.spheresVisible = False
+    else:
+        for sphere in self.spheres:
+            sphere.add()
+        self.spheresVisible = True
   def updateSpheres(self):
     # first remove old spheres
     for sphere in self.spheres:
@@ -877,10 +899,14 @@ class Sphere(object):
         self.y = y
         self.z = z
         
+        #self.add()
+        
+
+    def add(self):
         # Creating new nodes that represent the slice to be added in.
         self.source = vtk.vtkSphereSource()
         self.source.SetCenter(self.x, self.y, self.z)
-        self.source.SetRadius(0.05)
+        self.source.SetRadius(0.03)
         
         # model node
         self.model = slicer.vtkMRMLModelNode()
@@ -905,7 +931,7 @@ class Sphere(object):
         vTransform.Scale(150, 150, 150)
 
         self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-        
+    
     def remove(self):
         self.scene.RemoveNode(self.transform)
         self.scene.RemoveNode(self.modelDisplay)
