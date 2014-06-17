@@ -310,6 +310,12 @@ class SliceScrollerWidget:
     Qcoords = np.subtract(Qcoords, origin)
     Rcoords = np.subtract(Rcoords, origin)
     
+    # applying scaling factor to help center points closer to box
+    scalingFactor = 0.3
+    Pcoords = Pcoords * scalingFactor
+    Qcoords = Qcoords * scalingFactor
+    Rcoords = Rcoords * scalingFactor
+    
     self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
     self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
     self.pointRCoordinateBox.coordinates = ','.join(str(coord) for coord in Rcoords)
@@ -449,7 +455,7 @@ class SliceScrollerLogic:
   """
   def __init__(self):
     #Creating list of all image slices
-    imgFilePrefix =  'C:\\Users\\Rui\\Dropbox\\Documents\\Documents\\Duke\\Nightingale Lab\\magnetic_tracking\\Freehand-Tools\\SliceScroller\\data\\'
+    imgFilePrefix =  'C:\\Users\\Rui\\Dropbox\\Documents\\Duke\\Nightingale Lab\\magnetic_tracking\\Freehand-Tools\\SliceScroller\\data\\'
     p = subprocess.Popen(["ls", imgFilePrefix], stdout = subprocess.PIPE)
     fileList, error = p.communicate()
     fileList = fileList.split("\n")
@@ -556,7 +562,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
-    self.spheres[0] = Sphere(*coords)
+    self.spheres[0].setCoords(*coords)
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -565,7 +571,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
-    self.spheres[1] = Sphere(*coords)
+    self.spheres[1].setCoords(*coords)
     self.updateScene()
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -574,7 +580,7 @@ class SliceScrollerLogic:
     self.calcAndSetNewImageCenter(coords)
     self.currentSlice.updateRotation()
     self.currentSlice.updateAxes()
-    self.spheres[2] = Sphere(*coords)
+    self.spheres[2].setCoords(*coords)
     self.updateScene()   
     return [self.currentSlice.x, self.currentSlice.y, self.currentSlice.z]
 
@@ -656,8 +662,8 @@ class SliceScrollerLogic:
     #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
-    if self.spheresVisible:
-        self.updateSpheres()
+
+    self.updateSpheres()
     
   def toggleSpheresVisible(self):
     if self.spheresVisible:
@@ -668,15 +674,19 @@ class SliceScrollerLogic:
         for sphere in self.spheres:
             sphere.add()
         self.spheresVisible = True
+        
   def updateSpheres(self):
     # first remove old spheres
-    for sphere in self.spheres:
-        sphere.remove()
+    if self.spheresVisible:
+        for sphere in self.spheres:
+            sphere.remove()
+            sphere.add()
     # now put in new spheres based on P, Q, R coordinates
-    del self.spheres[:]
-    self.spheres.append(Sphere(*self.currentSlice.PCoordinates))
-    self.spheres.append(Sphere(*self.currentSlice.QCoordinates))
-    self.spheres.append(Sphere(*self.currentSlice.RCoordinates))
+    #del self.spheres[:]
+    #self.spheres.append(Sphere(*self.currentSlice.PCoordinates))
+    #self.spheres.append(Sphere(*self.currentSlice.QCoordinates))
+    #self.spheres.append(Sphere(*self.currentSlice.RCoordinates))
+    # finally, add newly updated spheres to scene.
     
   def selectSlice(self, index):
     # This method is called when the slice index slider is changed.
@@ -898,10 +908,12 @@ class Sphere(object):
         self.x = x
         self.y = y
         self.z = z
+ 
+    def setCoords(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
         
-        #self.add()
-        
-
     def add(self):
         # Creating new nodes that represent the slice to be added in.
         self.source = vtk.vtkSphereSource()
