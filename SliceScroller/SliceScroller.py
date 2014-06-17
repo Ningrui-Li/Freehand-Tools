@@ -70,7 +70,7 @@ class SliceScrollerWidget:
 
     # directory selection layout
     self.directorySelectionButton = ctk.ctkDirectoryButton()
-    self.directorySelectionButton.text = "C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
+    self.directorySelectionButton.text = "C:/Users/Rui/Dropbox/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
     self.directorySelectionButton.directory = self.directorySelectionButton.text
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
@@ -147,7 +147,9 @@ class SliceScrollerWidget:
     
     # toggle coordinate spheres appearing in scene
     self.sphereVisibleButton = qt.QPushButton("Toggle Coordinate Visibility")
+    self.sphereVisibleButton.checkable = True
     orientationFormLayout.addWidget(self.sphereVisibleButton)
+    
     
     # plane rotation slider
     self.rotationSlider = ctk.ctkSliderWidget()
