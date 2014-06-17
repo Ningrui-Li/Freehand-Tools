@@ -259,10 +259,13 @@ class SliceScrollerWidget:
     
   # needs to be cleaner
   def onTrackingSystem(self):
+    # acquire path of this script to locate PDIconsole.exe and data easier.
     posTrackDirectory = abspath(getsourcefile(lambda _: None))
     posTrackDirectory = posTrackDirectory.replace("SliceScroller.py", "")
     os.chdir(posTrackDirectory)
-    os.system("PDIconsole.exe")
+    #os.system("PDIconsole.exe")
+    p = subprocess.Popen(posTrackDirectory + "PDIconsole.exe")
+    p.wait()
     positionFile = open(posTrackDirectory + 'test.txt', 'r')
 
     positionFile.readline()
