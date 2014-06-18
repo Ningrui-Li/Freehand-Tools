@@ -39,29 +39,30 @@ class SliceScrollerWidget:
     self.scene = slicer.mrmlScene
     self.scene.SaveStateForUndo()
   def setup(self):
+    ###############################################################    
+    # reload button and reload & test button                      #
+    ###############################################################
     reloadCollapsibleButton = ctk.ctkCollapsibleButton()
     reloadCollapsibleButton.text = "Reload && Test"
     self.layout.addWidget(reloadCollapsibleButton)
     reloadFormLayout = qt.QFormLayout(reloadCollapsibleButton)
 
     # reload button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
     self.reloadButton = qt.QPushButton("Reload")
     self.reloadButton.toolTip = "Reload this module."
     self.reloadButton.name = "SliceScroller Reload"
     reloadFormLayout.addWidget(self.reloadButton)
     self.reloadButton.connect('clicked()', self.onReload)
-
+    
     # reload and test button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
     self.reloadAndTestButton = qt.QPushButton("Reload and Test")
     self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
     reloadFormLayout.addWidget(self.reloadAndTestButton)
     self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
-    
-    # Slice Scrolling Area
+   
+    ###############################################################
+    # Slice Scrolling - for swapping through various image slices #
+    ###############################################################
     scrollingCollapsibleButton = ctk.ctkCollapsibleButton()
     scrollingCollapsibleButton.text = "Slice Scrolling"
     self.layout.addWidget(scrollingCollapsibleButton)
@@ -80,22 +81,20 @@ class SliceScrollerWidget:
     self.sliceSlider.enabled = True
     scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
-    # orientation layout + sliders
+    ######################################################################    
+    # orientation layout - for adjusting image  position and orientation #
+    ######################################################################
     orientationCollapsibleButton = ctk.ctkCollapsibleButton()
     orientationCollapsibleButton.text = "Orientation"
     self.layout.addWidget(orientationCollapsibleButton)
-    
     orientationFormLayout = qt.QFormLayout(orientationCollapsibleButton)
-    
-    # Tracking system input button
+   
+    # Tracking system - set zero button
+    self.zeroSysButton = qt.QPushButton("Zero Position")
+    orientationFormLayout.addWidget(self.zeroSysButton)
+    # Tracking system - reading button
     self.trackingSysButton = qt.QPushButton("Read Position")
     orientationFormLayout.addWidget(self.trackingSysButton)
-
-    # size scaling slider
-    scalingCollapsibleButton = ctk.ctkCollapsibleButton()
-    scalingCollapsibleButton.text = "Image Size Scaling"
-    self.layout.addWidget(scalingCollapsibleButton)
-    scalingFormLayout = qt.QFormLayout(scalingCollapsibleButton)
 
     # x, y, z plane center position sliders
     self.xSlider = ctk.ctkSliderWidget()
@@ -130,7 +129,6 @@ class SliceScrollerWidget:
     self.pointPCoordinateBox.dimension = 3
     self.pointPCoordinateBox.decimals = 2
     self.pointPCoordinateBox.singleStep = 0.01
-    self.pointPCoordinateBox.enabled = True
     orientationFormLayout.addRow("Point P Coordinates", self.pointPCoordinateBox)
 
     self.pointQCoordinateBox = ctk.ctkCoordinatesWidget()
@@ -149,7 +147,6 @@ class SliceScrollerWidget:
     self.sphereVisibleButton = qt.QPushButton("Toggle Coordinate Visibility")
     self.sphereVisibleButton.checkable = True
     orientationFormLayout.addWidget(self.sphereVisibleButton)
-    
     
     # plane rotation slider
     self.rotationSlider = ctk.ctkSliderWidget()
@@ -179,7 +176,13 @@ class SliceScrollerWidget:
     self.yAxisSlider.value = 0
     self.yAxisSlider.singleStep = 0.01
     orientationFormLayout.addRow("Y-Axis", self.yAxisSlider)
-
+    
+    # size scaling slider
+    scalingCollapsibleButton = ctk.ctkCollapsibleButton()
+    scalingCollapsibleButton.text = "Image Size Scaling"
+    self.layout.addWidget(scalingCollapsibleButton)
+    scalingFormLayout = qt.QFormLayout(scalingCollapsibleButton)
+    
     # image size scaling slider
     self.scalingSlider = ctk.ctkSliderWidget()
     self.scalingSlider.decimals = 0
@@ -189,10 +192,13 @@ class SliceScrollerWidget:
     self.scalingSlider.value = 150
     scalingFormLayout.addRow("Scaling", self.scalingSlider)
 
-    # make connections between valueChanged/coordinatesChanged signals and
-    # methods that connect back to the logic.
+    ###########################################################################
+    # make connections between valueChanged/coordinatesChanged signals and    #
+    # methods that connect back to the logic.                                 #
+    ###########################################################################
     self.directorySelectionButton.connect('directoryChanged(QString)', self.onDirectoryChanged)
     self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
+    self.zeroSysButton.connect('clicked()', self.onZeroTrackingSystem)
     self.trackingSysButton.connect('clicked()', self.onTrackingSystem)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
@@ -213,12 +219,12 @@ class SliceScrollerWidget:
     # add vertical spacing
     self.layout.addStretch(1)
 
-  # The following methods are called when a slider/coordinate value changes.
-  # Slider values and coordinates and passed down, and occasionally, results are
-  # returned so as to update the slider values.
+    # The following methods are called when a slider/coordinate value changes.
+    # Slider values and coordinates and passed down, and occasionally, results are
+    # returned so as to update the slider values.
 
-  # For example, when P, Q, or R coordinates change, the center of the plane changes such that
-  # it becomes the point on the plane closest to the origin.
+    # For example, when P, Q, or R coordinates change, the center of the plane changes such that
+    # it becomes the point on the plane closest to the origin.
 
   def onDirectoryChanged(self, value):
     self.directorySelectionButton.text = self.directorySelectionButton.directory
@@ -257,57 +263,52 @@ class SliceScrollerWidget:
     self.yAxisSlider.value = currentSlice.yAxisValue
     self.scalingSlider.value = currentSlice.scaling
     
-  # needs to be cleaner
-  def onTrackingSystem(self):
-    # acquire path of this script to locate PDIconsole.exe and data easier.
+  def takeReading(self):
     posTrackDirectory = abspath(getsourcefile(lambda _: None))
     posTrackDirectory = posTrackDirectory.replace("SliceScroller.py", "")
     os.chdir(posTrackDirectory)
+    # PDIconsole.exe performs the position and orientation (pno) data
+    # acquisition and places it into "test.txt"
     p = subprocess.Popen(posTrackDirectory + "PDIconsole.exe")
+    p.wait()
+ 
+    positionFile = open(posTrackDirectory + 'test.txt', 'r')
+    pno = positionFile.readline().split()
+    positionFile.close()
     
-    import time
-    import threading
-    time.sleep(7)
-    # first reading set as the origin
-    isOrigin = True
-    readings = 0
-    
-    while readings < 100:
-
-        positionFile = open(posTrackDirectory + 'test.txt', 'r')
-        pno = positionFile.readline().split()
-        positionFile.close()
-        # applying scaling factor to help center points closer to box
-        
-        if len(pno) > 0:
-            readings += 1
-            threading.Timer(0.5, self.readingsToScene, [pno, False]).start()
-            
-   
-  def readingsToScene(self, pno, isOrigin):
-    scalingFactor = 0.3
-        
     pno = [float(x) for x in pno]
+    # temporary scaling factor. needs to be updated to reflect
+    # scale of arfi image relative to MR dataset.
+    scalingFactor = 0.1
     pno[0] *= scalingFactor
     pno[1] *= scalingFactor
     pno[2] *= scalingFactor
-        
-    if isOrigin:
-        origin = list(pno)
-        isOrigin = False
-    else:
-        #pno[0] -= origin[0]
-        #pno[1] -= origin[1]
-        #pno[2] -= origin[2]
-        self.logic.setXPosition(pno[0])
-        self.logic.setYPosition(pno[1])
-        self.logic.setZPosition(pno[2])
+    
+    return pno
+  def onZeroTrackingSystem(self):
+    pno = self.takeReading()
+    self.origin = pno
+    
+  def onTrackingSystem(self):
+    pno = self.takeReading()
+    pno = np.subtract(pno, self.origin)
+    
+    print pno
+    
+    self.logic.setXPosition(pno[0])
+    self.logic.setYPosition(pno[1])
+    self.logic.setZPosition(pno[2])
             
-        self.xSlider.value = pno[0]
-        self.ySlider.value = pno[1]
-        self.zSlider.value = pno[2]
-        print pno
+    self.xSlider.value = pno[0]
+    self.ySlider.value = pno[1]
+    self.zSlider.value = pno[2]
         
+    # must double check these to see if they correspond to
+    # the correct euler angles.
+    self.logic.setXAngle(pno[3])
+    self.logic.setYAngle(pno[4])
+    self.logic.setZAngle(pno[5])
+    
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
 
@@ -434,7 +435,8 @@ class SliceScrollerLogic:
   requiring an instance of the Widget
   """
   def __init__(self):
-    #Creating list of all image slices
+    # Creating list of all image slices
+    # NEEDS TO BE CHANGED AS TO NOT BE HARD-CODED.
     imgFilePrefix =  'C:\\Users\\Rui\\Dropbox\\Documents\\Duke\\Nightingale Lab\\magnetic_tracking\\Freehand-Tools\\SliceScroller\\data\\'
     p = subprocess.Popen(["ls", imgFilePrefix], stdout = subprocess.PIPE)
     fileList, error = p.communicate()
@@ -513,7 +515,19 @@ class SliceScrollerLogic:
   def setZPosition(self, zpos):
     self.currentSlice.z = zpos
     self.updateScene()
+  
+  def setXAngle(self, xAng):
+    self.currentSlice.xAngle = xAng
+    self.updateScene()
 
+  def setYAngle(self, yAng):
+    self.currentSlice.yAngle = yAng
+    self.updateScene()
+  
+  def setZAngle(self, zAng):
+    self.currentSlice.zAngle = zAng
+    self.updateScene()
+  
   def setXAxisValue(self, xVal):
     # xVal and yVal must be saved in order to update slider interface when switching between image slices                                                  
     self.currentSlice.xAxisValue = xVal
