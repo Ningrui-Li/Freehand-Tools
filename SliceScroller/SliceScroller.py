@@ -263,76 +263,51 @@ class SliceScrollerWidget:
     posTrackDirectory = abspath(getsourcefile(lambda _: None))
     posTrackDirectory = posTrackDirectory.replace("SliceScroller.py", "")
     os.chdir(posTrackDirectory)
-    #os.system("PDIconsole.exe")
     p = subprocess.Popen(posTrackDirectory + "PDIconsole.exe")
-    p.wait()
-    positionFile = open(posTrackDirectory + 'test.txt', 'r')
-
-    positionFile.readline()
-    nextLine = positionFile.readline()
-    measurementCounter = 0
-    origin = [0, 0, 0]
-    while not (nextLine.startswith("Reading")):
-        reading = [float(x) for x in nextLine.split()]
-        origin = np.add(origin, reading[0:3])
-        nextLine = positionFile.readline()
-        measurementCounter += 1
-    origin = np.divide(origin, measurementCounter)
-
-    nextLine = positionFile.readline()
-    measurementCounter = 0
-    Pcoords = [0, 0, 0]
-    while not (nextLine.startswith("Reading")):
-        reading = [float(x) for x in nextLine.split()]
-        Pcoords = np.add(Pcoords, reading[0:3])
-        nextLine = positionFile.readline()
-        measurementCounter += 1
-    Pcoords = np.divide(Pcoords, measurementCounter)
-
-    nextLine = positionFile.readline()
-    measurementCounter = 0
-    Qcoords = [0, 0, 0]
-    while not (nextLine.startswith("Reading")):
-        reading = [float(x) for x in nextLine.split()]
-        Qcoords = np.add(Qcoords, reading[0:3])
-        nextLine = positionFile.readline()
-        measurementCounter += 1
-    Qcoords = np.divide(Qcoords, measurementCounter)
-
-    nextLine = positionFile.readline()
-    measurementCounter = 0
-    Rcoords = [0, 0, 0]
-    while (nextLine):
-        reading = [float(x) for x in nextLine.split()]
-        Rcoords = np.add(Rcoords, reading[0:3])
-        nextLine = positionFile.readline()
-        measurementCounter += 1
-    Rcoords = np.divide(Rcoords, measurementCounter)
-
-    positionFile.close()
     
-    Pcoords = np.subtract(Pcoords, origin)
-    Qcoords = np.subtract(Qcoords, origin)
-    Rcoords = np.subtract(Rcoords, origin)
+    import time
+    import threading
+    time.sleep(7)
+    # first reading set as the origin
+    isOrigin = True
+    readings = 0
     
-    # applying scaling factor to help center points closer to box
+    while readings < 100:
+
+        positionFile = open(posTrackDirectory + 'test.txt', 'r')
+        pno = positionFile.readline().split()
+        positionFile.close()
+        # applying scaling factor to help center points closer to box
+        
+        if len(pno) > 0:
+            readings += 1
+            threading.Timer(0.5, self.readingsToScene, [pno, False]).start()
+            
+   
+  def readingsToScene(self, pno, isOrigin):
     scalingFactor = 0.3
-    Pcoords = Pcoords * scalingFactor
-    Qcoords = Qcoords * scalingFactor
-    Rcoords = Rcoords * scalingFactor
-    
-    self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
-    self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
-    self.pointRCoordinateBox.coordinates = ','.join(str(coord) for coord in Rcoords)
-    
-    self.logic.setPCoords(Pcoords)
-    self.logic.setQCoords(Qcoords)
-    newCenter = self.logic.setRCoords(Rcoords)
-    
-    self.xSlider.value = newCenter[0]
-    self.ySlider.value = newCenter[1]
-    self.zSlider.value = newCenter[2]
-    
+        
+    pno = [float(x) for x in pno]
+    pno[0] *= scalingFactor
+    pno[1] *= scalingFactor
+    pno[2] *= scalingFactor
+        
+    if isOrigin:
+        origin = list(pno)
+        isOrigin = False
+    else:
+        #pno[0] -= origin[0]
+        #pno[1] -= origin[1]
+        #pno[2] -= origin[2]
+        self.logic.setXPosition(pno[0])
+        self.logic.setYPosition(pno[1])
+        self.logic.setZPosition(pno[2])
+            
+        self.xSlider.value = pno[0]
+        self.ySlider.value = pno[1]
+        self.zSlider.value = pno[2]
+        print pno
+        
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
 
@@ -628,7 +603,7 @@ class SliceScrollerLogic:
     # Creating new nodes that represent the slice to be added in.
     planeSource = vtk.vtkPlaneSource()
     planeSource.SetCenter(self.currentSlice.x, self.currentSlice.y, self.currentSlice.z)
-    planeSource.SetNormal(*self.currentSlice.planeNormal)
+    #planeSource.SetNormal(*self.currentSlice.planeNormal)
 
     reader = vtk.vtkPNGReader()
     reader.SetFileName(self.currentSlice.name)
@@ -662,10 +637,14 @@ class SliceScrollerLogic:
     vTransform.Translate(self.currentSlice.xOffset, self.currentSlice.yOffset, self.currentSlice.zOffset)
 
     # Rotation, but still on same plane
-    vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
+    #vTransform.RotateWXYZ(self.currentSlice.planeRotation, *self.currentSlice.planeNormal)
     #print "The normal to the plane is ", self.currentSlice.planeNormal
     #vTransform.RotateWXYZ(self.currentSlice.rotationAngle, *self.currentSlice.rotationAxis)
-
+    
+    vTransform.RotateX(self.currentSlice.xAngle)
+    vTransform.RotateY(self.currentSlice.yAngle)
+    vTransform.RotateZ(self.currentSlice.zAngle)
+    
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
 
     self.updateSpheres()
@@ -681,17 +660,11 @@ class SliceScrollerLogic:
         self.spheresVisible = True
         
   def updateSpheres(self):
-    # first remove old spheres
+    # remove old spheres from scene and add in new ones w/ updated coords
     if self.spheresVisible:
         for sphere in self.spheres:
             sphere.remove()
             sphere.add()
-    # now put in new spheres based on P, Q, R coordinates
-    #del self.spheres[:]
-    #self.spheres.append(Sphere(*self.currentSlice.PCoordinates))
-    #self.spheres.append(Sphere(*self.currentSlice.QCoordinates))
-    #self.spheres.append(Sphere(*self.currentSlice.RCoordinates))
-    # finally, add newly updated spheres to scene.
     
   def selectSlice(self, index):
     # This method is called when the slice index slider is changed.
@@ -792,6 +765,10 @@ class Slice(object):
     self.y = 0
     self.z = 0
     
+    #
+    self.xAngle = 0
+    self.yAngle = 0
+    self.zAngle = 0
     # 3 points chosen by the user that define the image's alignment plane
     self.PCoordinates = [0, 0, 0]
     self.QCoordinates = [0, 0, 0]
@@ -842,7 +819,7 @@ class Slice(object):
     self.y = xyz[1]
     self.z = xyz[2]
 
-  """def setAngles(self, xAng, yAng, zAng):
+  def setAngles(self, xAng, yAng, zAng):
     self.xAngle = xAng
     self.yAngle = yAng
     self.zAngle = zAng
@@ -851,7 +828,7 @@ class Slice(object):
     self.xAngle = xyzAng[0]
     self.yAngle = xyzAng[1]
     self.zAngle = xyzAng[2]
-    """
+    
 
   def setScaling(self, scaling):
     self.scaling = scaling
@@ -953,4 +930,3 @@ class Sphere(object):
         self.scene.RemoveNode(self.transform)
         self.scene.RemoveNode(self.modelDisplay)
         self.scene.RemoveNode(self.model)
-
