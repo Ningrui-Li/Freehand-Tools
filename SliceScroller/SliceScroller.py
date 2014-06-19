@@ -305,9 +305,9 @@ class SliceScrollerWidget:
         
     # must double check these to see if they correspond to
     # the correct euler angles.
-    self.logic.setXAngle(pno[3])
-    self.logic.setYAngle(pno[4])
-    self.logic.setZAngle(pno[5])
+    self.logic.setXAngle(pno[4])
+    self.logic.setYAngle(pno[5])
+    self.logic.setZAngle(-pno[3])
     
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
