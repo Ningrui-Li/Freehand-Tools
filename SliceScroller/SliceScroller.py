@@ -72,10 +72,12 @@ class SliceScrollerWidget:
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
+    import os
     self.sliceSlider = ctk.ctkSliderWidget()
     self.sliceSlider.decimals = 0
     self.sliceSlider.enabled = True
-    #self.sliceSlider.maximum = 2359
+    self.sliceSlider.maximum = len([imgfile for imgfile in os.listdir(self.directorySelectionButton.directory) \
+                               if os.path.isfile(os.path.join(self.directorySelectionButton.directory, imgfile))])
     scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
     # orientation sliders
@@ -175,10 +177,6 @@ class SliceScrollerWidget:
     self.scalingSlider.minimum = 0
     self.scalingSlider.value = 150
     scalingFormLayout.addRow("Scaling", self.scalingSlider)
-
-    """self.console = ctk.ctkConsole()
-    scalingFormLayout.addRow("Console", self.console)
-    self.console.update("huehuehue")"""
 
     # make connections between valueChanged/coordinatesChanged signals and
     # methods that connect back to the logic.
