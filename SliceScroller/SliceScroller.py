@@ -56,7 +56,6 @@ class SliceScrollerWidget:
     self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
     reloadFormLayout.addWidget(self.reloadAndTestButton)
     self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
-
     
     # Slice Scrolling Area
     scrollingCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -67,8 +66,9 @@ class SliceScrollerWidget:
 
     # directory selection layout
     self.directorySelectionButton = ctk.ctkDirectoryButton()
-    self.directorySelectionButton.text = "Image Directory"
-    self.directorySelectionButton.directory = "/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/"
+    #self.directorySelectionButton.text = "C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Freehand-Tools/SliceScroller/data/"
+    self.directorySelectionButton.text = "/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/"
+    self.directorySelectionButton.directory = self.directorySelectionButton.text
     scrollingFormLayout.addRow("Directory", self.directorySelectionButton)
 
     # Slice selection scroller
@@ -80,12 +80,17 @@ class SliceScrollerWidget:
                                if os.path.isfile(os.path.join(self.directorySelectionButton.directory, imgfile))])
     scrollingFormLayout.addRow("Slices", self.sliceSlider)
 
-    # orientation sliders
+    # orientation layout + sliders
     orientationCollapsibleButton = ctk.ctkCollapsibleButton()
     orientationCollapsibleButton.text = "Orientation"
     self.layout.addWidget(orientationCollapsibleButton)
+    
     orientationFormLayout = qt.QFormLayout(orientationCollapsibleButton)
     
+    # Tracking system input button
+    self.trackingSysButton = qt.QPushButton("Read Position")
+    orientationFormLayout.addWidget(self.trackingSysButton)
+
     # size scaling slider
     scalingCollapsibleButton = ctk.ctkCollapsibleButton()
     scalingCollapsibleButton.text = "Image Size Scaling"
@@ -182,6 +187,7 @@ class SliceScrollerWidget:
     # methods that connect back to the logic.
     self.directorySelectionButton.connect('directoryChanged(QString)', self.onDirectoryChanged)
     self.sliceSlider.connect('valueChanged(double)', self.onSliderValueChanged)
+    self.trackingSysButton.connect('clicked()', self.onTrackingSystem)
     self.xSlider.connect('valueChanged(double)', self.onXPositionValueChanged)    
     self.ySlider.connect('valueChanged(double)', self.onYPositionValueChanged)    
     self.zSlider.connect('valueChanged(double)', self.onZPositionValueChanged)    
@@ -195,7 +201,7 @@ class SliceScrollerWidget:
     
     # declare logic variable that updates image plane properties based on values passed
     # to it from the user interface
-    self.logic = SliceScrollerLogic()
+    self.logic = SliceScrollerLogic(self.directorySelectionButton.directory)
 
     # add vertical spacing
     self.layout.addStretch(1)
@@ -208,12 +214,20 @@ class SliceScrollerWidget:
   # it becomes the point on the plane closest to the origin.
 
   def onDirectoryChanged(self, value):
-    p = subprocess.Popen(["ls", "-v", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
-    imageList, error = p.communicate()
-    imageList = imageList.split("\n")
-    imageList.pop() # last element is always empty
-    self.sliceSlider.maximum = len(imageList) - 1
-    print imageList
+    self.directorySelectionButton.text = self.directorySelectionButton.directory
+    p = subprocess.Popen(["ls", self.directorySelectionButton.directory + "/"], stdout = subprocess.PIPE)
+    fileList, error = p.communicate()
+    fileList = fileList.split("\n")
+    imageList = []
+    
+    for file in fileList:
+        if file.endswith('.png'):
+            imageList.append(file)
+    
+    self.sliceSlider.maximum = len(imageList)
+    self.sliceSlider.value = 0 
+    
+    self.logic.loadImages(self.directorySelectionButton.directory + "/", imageList)
     
   def onSliderValueChanged(self, value):
     # call to selectSlice updates the scene with the selected slice.
@@ -235,6 +249,27 @@ class SliceScrollerWidget:
     self.xAxisSlider.value = currentSlice.xAxisValue
     self.yAxisSlider.value = currentSlice.yAxisValue
     self.scalingSlider.value = currentSlice.scaling
+    
+  def onTrackingSystem(self):
+    os.chdir('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/')
+    os.system("PDImfcD.exe")
+    positionFile = open('C:/Users/Rui/Dropbox/Documents/Documents/Duke/Nightingale Lab/magnetic_tracking/Liberty-Tracking/Debug/Win32/test.txt', 'r')
+    positions = positionFile.read().split()
+    Rcoords = positions[-6:-3]
+    Qcoords = positions[-12:-9]
+    Pcoords = positions[-18:-15]
+    
+    self.pointPCoordinateBox.coordinates = ','.join(str(coord) for coord in Pcoords)
+    self.pointQCoordinateBox.coordinates = ','.join(str(coord) for coord in Qcoords)
+    self.pointRCoordinateBox.coordinates = ','.join(str(coord) for coord in Rcoords)
+    
+    self.logic.setPCoords(Pcoords)
+    self.logic.setQCoords(Qcoords)
+    newCenter = self.logic.setRCoords(Rcoords)
+    
+    self.xSlider.value = newCenter[0]
+    self.ySlider.value = newCenter[1]
+    self.zSlider.value = newCenter[2]
     
   def onXPositionValueChanged(self, value):
     self.logic.setXPosition(value)
@@ -358,13 +393,21 @@ class SliceScrollerLogic:
   this class and make use of the functionality without
   requiring an instance of the Widget
   """
-  def __init__(self):
-    # Creating list of all image slices
-    sliceNameList = [i.strip() for i in open('./imageList.txt', 'r').readlines()]
-    imgFilePrefix = '/luscinia/ProstateStudy/invivo/Patient59/loupas/RadialImagesCC_imwrite/'
-
+  def __init__(self, directory):
+    #Creating list of all image slices
+    imgFilePrefix = directory + '/'
+    p = subprocess.Popen(["ls", imgFilePrefix], stdout = subprocess.PIPE)
+    fileList, error = p.communicate()
+    fileList = fileList.split("\n")
+    
+    imageList = []
+    
+    for file in fileList:
+        if file.endswith('.png'):
+            imageList.append(file)
+      
     self.sliceList = []
-    for name in sliceNameList:
+    for name in imageList:
       self.sliceList.append(Slice(imgFilePrefix + name))
 
     self.scene = slicer.mrmlScene
@@ -409,6 +452,13 @@ class SliceScrollerLogic:
 
     self.transform.SetAndObserveMatrixTransformToParent(vTransform.GetMatrix())
     
+  def loadImages(self, imgFilePrefix, imageList):
+    self.sliceList = []
+    for name in imageList:
+      self.sliceList.append(Slice(imgFilePrefix + name))
+    self.currentSlice = self.sliceList[0]
+    self.updateScene()
+  
   def setXPosition(self, xpos):
     self.currentSlice.x = xpos
     self.updateScene()
